@@ -134,3 +134,28 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+# Turbo cache
+.turbo/
+
+# npm local cache
+.npm-cache/
+
+# AI tooling
+.omc/
+.claude/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# uni-app (WeChat Mini Program)
+apps/wechat-miniapp/unpackage/
+apps/wechat-miniapp/.hbuilderx/
