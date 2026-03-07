@@ -1,0 +1,86 @@
+name: backend-quality
+
+on:
+  pull_request:
+    paths:
+      - "apps/backend/**"
+      - "packages/shared/**"
+      - "tools/**"
+      - "package.json"
+      - "package-lock.json"
+      - "turbo.json"
+      - ".github/workflows/backend-quality.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "apps/backend/**"
+      - "packages/shared/**"
+      - "tools/**"
+      - "package.json"
+      - "package-lock.json"
+      - "turbo.json"
+      - ".github/workflows/backend-quality.yml"
+
+jobs:
+  backend-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: ai_companion
+          POSTGRES_USER: ai_companion
+          POSTGRES_PASSWORD: ai_companion_dev
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ai_companion -d ai_companion"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://ai_companion:ai_companion_dev@localhost:5432/ai_companion
+      MASTRA_DURABLE_REQUIRED: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Prepare test database schema
+        run: npm run check:backend:db
+
+      - name: Lint backend
+        run: npm run lint:backend
+
+      - name: Lint shared
+        run: npm run lint:shared
+
+      - name: Lint tools
+        run: npm run lint:tools
+
+      - name: Format check backend
+        run: npm run format:backend
+
+      - name: Format check shared
+        run: npm run format:shared
+
+      - name: Build backend
+        run: npm run build:backend
+
+      - name: Run backend e2e
+        run: npm run test:e2e:backend
+
+      - name: Status sync check
+        run: npm run status:check

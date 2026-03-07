@@ -1,0 +1,22 @@
+﻿{
+  "name": "@meglow/wechat-miniapp",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "lint": "echo \"no lint configured for @meglow/wechat-miniapp\"",
+    "test": "echo \"no test configured for @meglow/wechat-miniapp\"",
+    "format": "echo \"no format configured for @meglow/wechat-miniapp\""
+  },
+  "dependencies": {
+    "pinia": "^2.3.0",
+    "vue": "^3.5.13"
+  },
+  "devDependencies": {
+    "@dcloudio/types": "^3.4.13",
+    "@dcloudio/vite-plugin-uni": "^3.0.0-4040420250228001",
+    "typescript": "^5.7.2",
+    "vite": "5.2.8"
+  }
+}

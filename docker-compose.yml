@@ -1,0 +1,45 @@
+﻿version: "3.9"
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: ai-companion-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-ai_companion}
+      POSTGRES_USER: ${POSTGRES_USER:-ai_companion}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ai_companion_dev}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    container_name: ai-companion-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+
+  backend:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+    container_name: ai-companion-backend
+    restart: unless-stopped
+    depends_on:
+      - postgres
+      - redis
+    ports:
+      - "${BACKEND_PORT:-3000}:3000"
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql://ai_companion:ai_companion_dev@postgres:5432/ai_companion}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      JWT_SECRET: ${JWT_SECRET:-replace_me_in_production}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+
+volumes:
+  postgres_data:
+  redis_data:

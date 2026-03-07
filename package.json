@@ -1,0 +1,62 @@
+{
+  "name": "meglow",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AI companion monorepo",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo run dev --parallel",
+    "dev:backend": "npm run dev --workspace @meglow/backend",
+    "dev:wechat-miniapp": "npm run dev --workspace @meglow/wechat-miniapp",
+    "dev:api": "npm run dev --workspace @meglow/backend",
+    "dev:miniapp": "npm run dev --workspace @meglow/wechat-miniapp",
+    "prepare": "node tools/setup-husky.mjs",
+    "precommit": "npm run lint:backend && npm run lint:shared && npm run lint:tools",
+    "precommit:staged": "lint-staged",
+    "commitmsg:check": "node tools/validate-commit-message.mjs",
+    "lint:backend": "npm run lint --workspace @meglow/backend",
+    "lint:shared": "npm run lint --workspace @meglow/shared",
+    "lint:tools": "eslint \"tools/**/*.mjs\" --max-warnings=0",
+    "format:backend": "npm run format --workspace @meglow/backend",
+    "format:shared": "npm run format --workspace @meglow/shared",
+    "build:backend": "npm run build --workspace @meglow/backend",
+    "test:e2e:backend": "node tools/run-backend-e2e.mjs",
+    "format:check": "prettier --check .",
+    "format:write": "prettier --write .",
+    "check": "npm run check:backend",
+    "check:backend": "npm run lint:backend && npm run lint:shared && npm run lint:tools && npm run format:backend && npm run format:shared && npm run build:backend && npm run test:e2e:backend && npm run status:check",
+    "check:backend:db": "node tools/run-backend-db-push.mjs",
+    "ci:backend": "npm run check:backend:db && npm run check:backend",
+    "status:sync": "node tools/status-sync.mjs",
+    "status:check": "node tools/status-sync.mjs --check",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "format": "npm run format:check"
+  },
+  "lint-staged": {
+    "*.{js,cjs,mjs,ts,tsx,jsx,css,scss,md,json,yml,yaml}": "prettier --write",
+    "apps/backend/**/*.{ts,js}": "eslint --fix",
+    "packages/shared/**/*.{ts,js}": "eslint --fix",
+    "tools/**/*.{js,mjs,cjs}": "eslint --fix"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@typescript-eslint/eslint-plugin": "^8.56.1",
+    "@typescript-eslint/parser": "^8.56.1",
+    "eslint": "^10.0.3",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.4.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.3.2",
+    "prettier": "^3.8.1",
+    "turbo": "^2.5.0",
+    "typescript": "^5.6.3"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
