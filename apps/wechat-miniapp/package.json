@@ -1,4 +1,4 @@
-﻿{
+{
   "name": "@meglow/wechat-miniapp",
   "version": "0.1.0",
   "private": true,
@@ -15,7 +15,10 @@
   },
   "devDependencies": {
     "@dcloudio/types": "^3.4.13",
-    "@dcloudio/vite-plugin-uni": "^3.0.0-4040420250228001",
+    "@dcloudio/uni-cli-shared": "^2.0.2-4080720251210002",
+    "@dcloudio/uni-components": "^3.0.0-4080720251210001",
+    "@dcloudio/vite-plugin-uni": "^3.0.0-4080720251210001",
+    "@vitejs/plugin-vue": "^5.2.4",
     "typescript": "^5.7.2",
     "vite": "5.2.8"
   }
