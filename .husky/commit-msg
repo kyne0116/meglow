@@ -1,3 +1,0 @@
-#!/usr/bin/env sh
-
-node tools/validate-commit-message.mjs "$1"

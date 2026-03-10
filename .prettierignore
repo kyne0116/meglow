@@ -1,7 +1,0 @@
-node_modules
-.npm-cache
-dist
-coverage
-.turbo
-.git
-apps/wechat-miniapp/dist

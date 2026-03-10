@@ -1,0 +1,31 @@
+{
+  "name": "Meglow",
+  "appid": "__UNI__MEGLOW",
+  "description": "Meglow multi-platform frontend",
+  "versionName": "0.1.0",
+  "versionCode": "100",
+  "vueVersion": "3",
+  "mp-weixin": {
+    "appid": "",
+    "setting": {
+      "urlCheck": false
+    }
+  },
+  "app-plus": {
+    "usingComponents": true,
+    "nvueStyleCompiler": "uni-app",
+    "compilerVersion": 3,
+    "splashscreen": {
+      "alwaysShowBeforeRender": true,
+      "waiting": true
+    },
+    "distribute": {
+      "android": {
+        "package": "com.meglow.app"
+      },
+      "ios": {
+        "bundleIdentifier": "com.meglow.app"
+      }
+    }
+  }
+}

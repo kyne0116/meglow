@@ -1,0 +1,29 @@
+{
+  "name": "@meglow/frontend-app",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev:mp-weixin": "uni -p mp-weixin",
+    "build:mp-weixin": "uni build -p mp-weixin",
+    "build:app-android": "uni build -p app-android",
+    "build:app-ios": "uni build -p app-ios"
+  },
+  "dependencies": {
+    "@dcloudio/uni-app": "3.0.0-alpha-4080120250820001",
+    "@dcloudio/uni-app-plus": "3.0.0-alpha-4080120250820001",
+    "@dcloudio/uni-components": "3.0.0-alpha-4080120250820001",
+    "@dcloudio/uni-mp-weixin": "3.0.0-alpha-4080120250820001",
+    "pinia": "2.1.7",
+    "vue": "3.4.21",
+    "vue-router": "4.4.4"
+  },
+  "devDependencies": {
+    "@dcloudio/types": "3.4.28",
+    "@dcloudio/vite-plugin-uni": "3.0.0-alpha-4080120250820001",
+    "@types/node": "^22.10.2",
+    "sass": "^1.87.0",
+    "typescript": "5.4.2",
+    "vite": "5.2.8"
+  },
+  "packageManager": "pnpm@10.28.1"
+}

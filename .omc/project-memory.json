@@ -1,0 +1,171 @@
+{
+  "version": "1.0.0",
+  "lastScanned": 1773124762819,
+  "projectRoot": "D:\\02_Dev\\Workspace\\GitHub\\meglow",
+  "techStack": {
+    "languages": [
+      {
+        "name": "JavaScript/TypeScript",
+        "version": null,
+        "confidence": "high",
+        "markers": [
+          "package.json"
+        ]
+      },
+      {
+        "name": "TypeScript",
+        "version": null,
+        "confidence": "high",
+        "markers": [
+          "tsconfig.json"
+        ]
+      }
+    ],
+    "frameworks": [
+      {
+        "name": "vue",
+        "version": "3.4.21",
+        "category": "frontend"
+      },
+      {
+        "name": "vite",
+        "version": "5.2.8",
+        "category": "build"
+      }
+    ],
+    "packageManager": "pnpm",
+    "runtime": null
+  },
+  "build": {
+    "buildCommand": null,
+    "testCommand": null,
+    "lintCommand": null,
+    "devCommand": null,
+    "scripts": {
+      "dev:mp-weixin": "uni -p mp-weixin",
+      "build:mp-weixin": "uni build -p mp-weixin",
+      "build:app-android": "uni build -p app-android",
+      "build:app-ios": "uni build -p app-ios"
+    }
+  },
+  "conventions": {
+    "namingStyle": "camelCase",
+    "importStyle": "ES modules",
+    "testPattern": null,
+    "fileOrganization": "type-based"
+  },
+  "structure": {
+    "isMonorepo": false,
+    "workspaces": [],
+    "mainDirectories": [
+      "src"
+    ],
+    "gitBranches": {
+      "defaultBranch": "main",
+      "branchingStrategy": null
+    }
+  },
+  "customNotes": [],
+  "directoryMap": {
+    "src": {
+      "path": "src",
+      "purpose": "Source code",
+      "fileCount": 5,
+      "lastAccessed": 1773124762708,
+      "keyFiles": [
+        "App.vue",
+        "main.ts",
+        "manifest.json",
+        "pages.json",
+        "uni.scss"
+      ]
+    },
+    "src\\components": {
+      "path": "src\\components",
+      "purpose": "UI components",
+      "fileCount": 0,
+      "lastAccessed": 1773124762749,
+      "keyFiles": []
+    },
+    "src\\pages": {
+      "path": "src\\pages",
+      "purpose": "Page components",
+      "fileCount": 0,
+      "lastAccessed": 1773124762750,
+      "keyFiles": []
+    },
+    "src\\services": {
+      "path": "src\\services",
+      "purpose": "Business logic services",
+      "fileCount": 1,
+      "lastAccessed": 1773124762751,
+      "keyFiles": [
+        "api.ts"
+      ]
+    },
+    "src\\types": {
+      "path": "src\\types",
+      "purpose": "Type definitions",
+      "fileCount": 0,
+      "lastAccessed": 1773124762752,
+      "keyFiles": []
+    }
+  },
+  "hotPaths": [
+    {
+      "path": "CLAUDE.md",
+      "accessCount": 2,
+      "lastAccessed": 1773125832978,
+      "type": "file"
+    },
+    {
+      "path": "docs\\01-prd\\ai-companion-prd-v1.0.md",
+      "accessCount": 2,
+      "lastAccessed": 1773127540012,
+      "type": "file"
+    },
+    {
+      "path": "package.json",
+      "accessCount": 1,
+      "lastAccessed": 1773124878409,
+      "type": "file"
+    },
+    {
+      "path": "vite.config.js",
+      "accessCount": 1,
+      "lastAccessed": 1773124878523,
+      "type": "file"
+    },
+    {
+      "path": "",
+      "accessCount": 1,
+      "lastAccessed": 1773124879012,
+      "type": "directory"
+    },
+    {
+      "path": "src\\manifest.json",
+      "accessCount": 1,
+      "lastAccessed": 1773124885156,
+      "type": "file"
+    },
+    {
+      "path": "src\\pages.json",
+      "accessCount": 1,
+      "lastAccessed": 1773124885217,
+      "type": "file"
+    },
+    {
+      "path": "tsconfig.json",
+      "accessCount": 1,
+      "lastAccessed": 1773124885280,
+      "type": "file"
+    },
+    {
+      "path": "docs\\02-product-design\\ai-companion-product-design-v1.0.md",
+      "accessCount": 1,
+      "lastAccessed": 1773127213569,
+      "type": "file"
+    }
+  ],
+  "userDirectives": []
+}
