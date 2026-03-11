@@ -29,6 +29,12 @@
       "style": {
         "navigationBarTitleText": "Child"
       }
+    },
+    {
+      "path": "pages/child/session/index",
+      "style": {
+        "navigationBarTitleText": "Learning Session"
+      }
     }
   ],
   "globalStyle": {

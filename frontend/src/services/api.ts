@@ -1,5 +1,9 @@
 import { requestApi } from "./http/client";
 
+export interface SendCodeRequest {
+  phone: string;
+}
+
 export interface LoginRequest {
   phone: string;
   verificationCode: string;
@@ -68,7 +72,7 @@ export interface ApprovePushRequest {
 export interface ChildTask {
   id: string;
   summary: string;
-  status: "APPROVED" | "MODIFIED" | "DELIVERED";
+  status: "APPROVED" | "MODIFIED" | "DELIVERED" | "COMPLETED";
   scheduledAt: string;
   content: Record<string, unknown>;
 }
@@ -76,6 +80,75 @@ export interface ChildTask {
 export interface PushActionResponse {
   pushId: string;
   status: string;
+}
+
+export interface EnglishWord {
+  id: string;
+  value: string;
+  phonetic: string | null;
+  meaningZh: string;
+  exampleSentence: string | null;
+  imageHint: string | null;
+  difficultyLevel: number;
+  k12Stage: "LOWER_PRIMARY" | "MIDDLE_PRIMARY" | "UPPER_PRIMARY" | "JUNIOR_HIGH";
+}
+
+export interface LearningSessionItem {
+  id: string;
+  itemType: "WORD_MEANING" | "WORD_SPELLING";
+  sequence: number;
+  prompt: Record<string, unknown>;
+  result?: Record<string, unknown> | null;
+}
+
+export interface LearningSession {
+  id: string;
+  taskId: string;
+  childId: string;
+  subject: "ENGLISH";
+  status: "IN_PROGRESS" | "COMPLETED" | "ABANDONED";
+  startedAt: string;
+  finishedAt?: string | null;
+  items: LearningSessionItem[];
+}
+
+export interface SubmitLearningAnswerRequest {
+  sessionItemId: string;
+  answer: Record<string, unknown>;
+}
+
+export interface SubmitLearningAnswerResponse {
+  sessionItemId: string;
+  isCorrect: boolean;
+  score: number;
+  feedback: string;
+  guidance: string;
+  encouragement: string;
+  progress: {
+    current: number;
+    total: number;
+  };
+}
+
+export interface FinishLearningSessionResponse {
+  sessionId: string;
+  status: "COMPLETED";
+  summary: {
+    totalItems: number;
+    correctItems: number;
+    accuracy: number;
+    newWordsLearned: number;
+    reviewWordsCompleted: number;
+  };
+}
+
+export async function postSendVerificationCode(payload: SendCodeRequest): Promise<{
+  success: true;
+  expiresInSec: number;
+}> {
+  return requestApi("POST", "/auth/send-code", {
+    data: payload as unknown as Record<string, unknown>
+  });
 }
 
 export async function postLogin(payload: LoginRequest): Promise<LoginResponse> {
@@ -132,6 +205,58 @@ export async function postCompletePush(token: string, pushId: string): Promise<P
 
 export async function postDeliverPush(token: string, pushId: string): Promise<PushActionResponse> {
   return requestApi("POST", `/pushes/${pushId}/deliver`, {
+    token,
+    data: {}
+  });
+}
+
+export async function getEnglishWords(
+  token: string,
+  params: { k12Stage?: string; keyword?: string; limit?: number } = {}
+): Promise<EnglishWord[]> {
+  const query = new URLSearchParams();
+  if (params.k12Stage) {
+    query.set("k12Stage", params.k12Stage);
+  }
+  if (params.keyword) {
+    query.set("keyword", params.keyword);
+  }
+  if (typeof params.limit === "number") {
+    query.set("limit", String(params.limit));
+  }
+  const path = query.toString() ? `/content/english/words?${query.toString()}` : "/content/english/words";
+  return requestApi("GET", path, { token });
+}
+
+export async function postCreateLearningSession(token: string, taskId: string): Promise<LearningSession> {
+  return requestApi("POST", "/learning/sessions", {
+    token,
+    data: { taskId }
+  });
+}
+
+export async function getLearningSession(token: string, sessionId: string): Promise<LearningSession> {
+  return requestApi("GET", `/learning/sessions/${sessionId}`, {
+    token
+  });
+}
+
+export async function postSubmitLearningAnswer(
+  token: string,
+  sessionId: string,
+  payload: SubmitLearningAnswerRequest
+): Promise<SubmitLearningAnswerResponse> {
+  return requestApi("POST", `/learning/sessions/${sessionId}/answer`, {
+    token,
+    data: payload as unknown as Record<string, unknown>
+  });
+}
+
+export async function postFinishLearningSession(
+  token: string,
+  sessionId: string
+): Promise<FinishLearningSessionResponse> {
+  return requestApi("POST", `/learning/sessions/${sessionId}/finish`, {
     token,
     data: {}
   });

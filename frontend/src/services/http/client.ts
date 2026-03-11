@@ -1,15 +1,34 @@
 export type RequestMethod = "GET" | "POST" | "PUT";
 
-const API_BASE = process.env.UNI_APP_API_BASE || "http://localhost:3000/api";
+export const API_BASE_STORAGE_KEY = "meglow_api_base";
+const DEFAULT_API_BASE = process.env.UNI_APP_API_BASE?.trim() || "http://localhost:5002/api";
 
 interface RequestOptions {
   token?: string;
   data?: Record<string, unknown>;
 }
 
+export function getApiBase(): string {
+  const cached = uni.getStorageSync(API_BASE_STORAGE_KEY);
+  if (typeof cached === "string" && cached.trim()) {
+    return cached.trim();
+  }
+  return DEFAULT_API_BASE;
+}
+
+export function setApiBase(nextApiBase: string): string {
+  const normalized = normalizeApiBase(nextApiBase);
+  uni.setStorageSync(API_BASE_STORAGE_KEY, normalized);
+  return normalized;
+}
+
+export function normalizeApiBase(rawApiBase: string): string {
+  return rawApiBase.trim().replace(/\/+$/, "");
+}
+
 export async function requestApi<T>(method: RequestMethod, path: string, options: RequestOptions = {}): Promise<T> {
   const result = await uni.request({
-    url: `${API_BASE}${path}`,
+    url: `${getApiBase()}${path}`,
     method,
     data: options.data,
     header: options.token

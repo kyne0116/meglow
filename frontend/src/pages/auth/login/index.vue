@@ -1,7 +1,13 @@
 <template>
   <view class="container">
     <view class="title">Meglow Login</view>
-    <view class="desc">Use dev verification code 123456</view>
+    <view class="desc">Configure a reachable API address for your phone, then request dev code 123456.</view>
+
+    <view class="field">
+      <text class="label">API Base</text>
+      <input v-model="apiBaseInput" class="input" placeholder="e.g. http://192.168.1.20:5002/api" />
+      <view class="hint">Current: {{ effectiveApiBase }}</view>
+    </view>
 
     <view class="field">
       <text class="label">Phone</text>
@@ -13,20 +19,31 @@
       <input v-model="verificationCode" class="input" placeholder="123456" />
     </view>
 
-    <button class="login-btn" type="primary" :loading="loading" @tap="login">Login</button>
+    <view class="row">
+      <button class="secondary-btn" :loading="sendingCode" @tap="sendCode">Send Code</button>
+      <button class="login-btn" type="primary" :loading="loggingIn" @tap="login">Login</button>
+    </view>
   </view>
 </template>
 
 <script setup lang="ts">
 import { onLoad } from "@dcloudio/uni-app";
-import { ref } from "vue";
-import { postLogin } from "../../../services/api";
+import { computed, ref } from "vue";
+import { postLogin, postSendVerificationCode } from "../../../services/api";
+import { getApiBase, normalizeApiBase, setApiBase } from "../../../services/http/client";
 import { useSessionStore } from "../../../stores/session";
 
 const sessionStore = useSessionStore();
-const loading = ref(false);
+const sendingCode = ref(false);
+const loggingIn = ref(false);
 const phone = ref("");
 const verificationCode = ref("123456");
+const apiBaseInput = ref(getApiBase());
+
+const effectiveApiBase = computed(() => {
+  const trimmed = apiBaseInput.value.trim();
+  return trimmed ? normalizeApiBase(trimmed) : getApiBase();
+});
 
 onLoad(() => {
   sessionStore.loadFromStorage();
@@ -36,6 +53,41 @@ onLoad(() => {
     });
   }
 });
+
+function persistApiBase(): string | null {
+  const trimmed = apiBaseInput.value.trim();
+  if (!/^https?:\/\/.+/i.test(trimmed)) {
+    uni.showToast({ title: "API Base must start with http:// or https://", icon: "none" });
+    return null;
+  }
+
+  const normalized = setApiBase(trimmed);
+  apiBaseInput.value = normalized;
+  return normalized;
+}
+
+async function sendCode(): Promise<void> {
+  const trimmedPhone = phone.value.trim();
+  if (!/^1\d{10}$/.test(trimmedPhone)) {
+    uni.showToast({ title: "Invalid phone number", icon: "none" });
+    return;
+  }
+
+  if (!persistApiBase()) {
+    return;
+  }
+
+  sendingCode.value = true;
+  try {
+    await postSendVerificationCode({ phone: trimmedPhone });
+    uni.showToast({ title: "Code sent: 123456", icon: "none" });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "send code failed";
+    uni.showToast({ title: message, icon: "none" });
+  } finally {
+    sendingCode.value = false;
+  }
+}
 
 async function login(): Promise<void> {
   const trimmedPhone = phone.value.trim();
@@ -47,8 +99,11 @@ async function login(): Promise<void> {
     uni.showToast({ title: "Verification code required", icon: "none" });
     return;
   }
+  if (!persistApiBase()) {
+    return;
+  }
 
-  loading.value = true;
+  loggingIn.value = true;
   try {
     const result = await postLogin({
       phone: trimmedPhone,
@@ -66,7 +121,7 @@ async function login(): Promise<void> {
     const message = error instanceof Error ? error.message : "login failed";
     uni.showToast({ title: message, icon: "none" });
   } finally {
-    loading.value = false;
+    loggingIn.value = false;
   }
 }
 </script>
@@ -85,6 +140,7 @@ async function login(): Promise<void> {
   margin-top: 12rpx;
   color: #667085;
   font-size: 26rpx;
+  line-height: 1.5;
 }
 
 .field {
@@ -108,7 +164,21 @@ async function login(): Promise<void> {
   box-sizing: border-box;
 }
 
-.login-btn {
+.hint {
+  margin-top: 10rpx;
+  color: #667085;
+  font-size: 22rpx;
+  word-break: break-all;
+}
+
+.row {
+  display: flex;
+  gap: 16rpx;
   margin-top: 30rpx;
+}
+
+.secondary-btn,
+.login-btn {
+  flex: 1;
 }
 </style>

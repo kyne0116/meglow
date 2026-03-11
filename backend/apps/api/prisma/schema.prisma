@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,8 +7,331 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id    Int     @id @default(autoincrement())
-  email String  @unique
-  name  String?
+enum ParentRole {
+  OWNER
+  MEMBER
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum K12Stage {
+  LOWER_PRIMARY
+  MIDDLE_PRIMARY
+  UPPER_PRIMARY
+  JUNIOR_HIGH
+}
+
+enum SubjectType {
+  ENGLISH
+}
+
+enum PushStatus {
+  PENDING_APPROVAL
+  APPROVED
+  MODIFIED
+  REJECTED
+  POSTPONED
+}
+
+enum PushActionType {
+  APPROVE
+  MODIFY
+  REJECT
+  POSTPONE
+}
+
+enum TaskStatus {
+  APPROVED
+  MODIFIED
+  DELIVERED
+  COMPLETED
+}
+
+enum SessionStatus {
+  IN_PROGRESS
+  COMPLETED
+  ABANDONED
+}
+
+enum LearningItemType {
+  WORD_MEANING
+  WORD_SPELLING
+  WORD_PRONUNCIATION
+}
+
+model Parent {
+  id          String                  @id @default(uuid()) @db.Uuid
+  phone       String                  @unique @db.VarChar(20)
+  nickname    String?                 @db.VarChar(50)
+  avatarUrl   String?                 @db.VarChar(255)
+  memberships FamilyMembership[]
+  pushActions LearningPushActionLog[] @relation("PushActionOperator")
+  createdAt   DateTime                @default(now())
+  updatedAt   DateTime                @updatedAt
+}
+
+model Family {
+  id          String             @id @default(uuid()) @db.Uuid
+  memberships FamilyMembership[]
+  children    Child[]
+  invites     FamilyInvite[]
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+}
+
+model FamilyMembership {
+  id                String     @id @default(uuid()) @db.Uuid
+  familyId          String     @db.Uuid
+  parentId          String     @db.Uuid
+  role              ParentRole
+  invitedByParentId String?    @db.Uuid
+  createdAt         DateTime   @default(now())
+  family            Family     @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  parent            Parent     @relation(fields: [parentId], references: [id], onDelete: Cascade)
+
+  @@unique([familyId, parentId])
+  @@index([parentId])
+}
+
+model VerificationCode {
+  id        String   @id @default(uuid()) @db.Uuid
+  phone     String   @db.VarChar(20)
+  code      String   @db.VarChar(10)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([phone, createdAt])
+  @@index([phone, expiresAt])
+}
+
+model FamilyInvite {
+  id              String   @id @default(uuid()) @db.Uuid
+  familyId        String   @db.Uuid
+  inviterParentId String   @db.Uuid
+  inviteePhone    String   @db.VarChar(20)
+  token           String   @unique @db.VarChar(100)
+  acceptedAt      DateTime?
+  expiresAt       DateTime
+  createdAt       DateTime @default(now())
+  family          Family   @relation(fields: [familyId], references: [id], onDelete: Cascade)
+
+  @@index([familyId])
+  @@index([inviteePhone])
+}
+
+model Child {
+  id               String                 @id @default(uuid()) @db.Uuid
+  familyId         String                 @db.Uuid
+  name             String                 @db.VarChar(50)
+  gender           Gender
+  birthDate        DateTime?
+  grade            Int
+  k12Stage         K12Stage
+  avatarUrl        String?                @db.VarChar(255)
+  family           Family                 @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  profile          ChildProfile?
+  gameProfile      ChildGameProfile?
+  learningSettings ChildLearningSettings[]
+  wordProgresses   ChildWordProgress[]
+  pushes           LearningPush[]
+  tasks            LearningTask[]
+  sessions         LearningSession[]
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+
+  @@index([familyId])
+  @@index([familyId, grade])
+}
+
+model ChildProfile {
+  id                    String   @id @default(uuid()) @db.Uuid
+  childId               String   @unique @db.Uuid
+  learningMemoryJson    Json
+  cognitiveMemoryJson   Json
+  personalityMemoryJson Json
+  teachingStrategyJson  Json
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  child                 Child    @relation(fields: [childId], references: [id], onDelete: Cascade)
+}
+
+model ChildGameProfile {
+  id           String   @id @default(uuid()) @db.Uuid
+  childId      String   @unique @db.Uuid
+  totalPoints  Int      @default(0)
+  currentLevel Int      @default(1)
+  streakDays   Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  child        Child    @relation(fields: [childId], references: [id], onDelete: Cascade)
+}
+
+model ChildLearningSettings {
+  id                 String      @id @default(uuid()) @db.Uuid
+  childId            String      @db.Uuid
+  subject            SubjectType
+  autoApprove        Boolean     @default(false)
+  weekdayTimeWindows Json
+  weekendTimeWindows Json
+  dailyDurationMin   Int
+  wordsPerSession    Int
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+  child              Child       @relation(fields: [childId], references: [id], onDelete: Cascade)
+
+  @@unique([childId, subject])
+  @@index([childId])
+}
+
+model EnglishWord {
+  id              String                @id @default(uuid()) @db.Uuid
+  value           String                @db.VarChar(100)
+  phonetic        String?               @db.VarChar(100)
+  meaningZh       String                @db.VarChar(255)
+  exampleSentence String?               @db.VarChar(500)
+  imageHint       String?               @db.VarChar(255)
+  difficultyLevel Int                   @default(1)
+  k12Stage        K12Stage
+  wordProgresses  ChildWordProgress[]
+  sessionItems    LearningSessionItem[]
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+
+  @@unique([value, k12Stage])
+  @@index([k12Stage, difficultyLevel])
+}
+
+model ChildWordProgress {
+  id              String      @id @default(uuid()) @db.Uuid
+  childId         String      @db.Uuid
+  wordId          String      @db.Uuid
+  masteryLevel    Int         @default(0)
+  correctStreak   Int         @default(0)
+  reviewStage     Int         @default(0)
+  lastReviewedAt  DateTime?
+  nextReviewAt    DateTime?
+  totalAttempts   Int         @default(0)
+  correctAttempts Int         @default(0)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  child           Child       @relation(fields: [childId], references: [id], onDelete: Cascade)
+  word            EnglishWord @relation(fields: [wordId], references: [id], onDelete: Cascade)
+
+  @@unique([childId, wordId])
+  @@index([childId, nextReviewAt])
+  @@index([childId, reviewStage])
+}
+
+model LearningPush {
+  id              String                  @id @default(uuid()) @db.Uuid
+  childId         String                  @db.Uuid
+  summary         String                  @db.VarChar(255)
+  reason          String                  @db.VarChar(500)
+  expectedOutcome String                  @db.VarChar(500)
+  status          PushStatus
+  scheduledAt     DateTime
+  contentJson     Json
+  createdBy       String                  @db.VarChar(50)
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+  child           Child                   @relation(fields: [childId], references: [id], onDelete: Cascade)
+  actionLogs      LearningPushActionLog[]
+  tasks           LearningTask[]
+
+  @@index([childId, status])
+  @@index([status, scheduledAt])
+}
+
+model LearningPushActionLog {
+  id               String         @id @default(uuid()) @db.Uuid
+  pushId           String         @db.Uuid
+  action           PushActionType
+  operatorParentId String         @db.Uuid
+  comment          String?        @db.VarChar(500)
+  payloadJson      Json?
+  createdAt        DateTime       @default(now())
+  push             LearningPush   @relation(fields: [pushId], references: [id], onDelete: Cascade)
+  operator         Parent         @relation("PushActionOperator", fields: [operatorParentId], references: [id], onDelete: Cascade)
+
+  @@index([pushId, createdAt])
+  @@index([operatorParentId])
+}
+
+model LearningTask {
+  id          String            @id @default(uuid()) @db.Uuid
+  pushId      String            @db.Uuid
+  childId     String            @db.Uuid
+  summary     String            @db.VarChar(255)
+  status      TaskStatus
+  scheduledAt DateTime
+  deliveredAt DateTime?
+  completedAt DateTime?
+  contentJson Json
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  push        LearningPush      @relation(fields: [pushId], references: [id], onDelete: Cascade)
+  child       Child             @relation(fields: [childId], references: [id], onDelete: Cascade)
+  sessions    LearningSession[]
+
+  @@index([childId, status])
+  @@index([childId, scheduledAt])
+}
+
+model LearningSession {
+  id          String               @id @default(uuid()) @db.Uuid
+  taskId      String               @db.Uuid
+  childId     String               @db.Uuid
+  subject     SubjectType
+  status      SessionStatus
+  startedAt   DateTime             @default(now())
+  finishedAt  DateTime?
+  summaryJson Json?
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+  task        LearningTask         @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  child       Child                @relation(fields: [childId], references: [id], onDelete: Cascade)
+  items       LearningSessionItem[]
+
+  @@index([taskId])
+  @@index([childId, status])
+}
+
+model LearningSessionItem {
+  id                    String                @id @default(uuid()) @db.Uuid
+  sessionId             String                @db.Uuid
+  wordId                String?               @db.Uuid
+  itemType              LearningItemType
+  sequence              Int
+  promptJson            Json
+  correctAnswerJson     Json
+  childAnswerJson       Json?
+  resultJson            Json?
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+  session               LearningSession       @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  word                  EnglishWord?          @relation(fields: [wordId], references: [id], onDelete: SetNull)
+  pronunciationAttempts PronunciationAttempt[]
+
+  @@index([sessionId, sequence])
+  @@index([wordId])
+}
+
+model PronunciationAttempt {
+  id              String              @id @default(uuid()) @db.Uuid
+  sessionItemId   String              @db.Uuid
+  childId         String              @db.Uuid
+  audioUrl        String              @db.VarChar(255)
+  score           Int
+  feedback        String?             @db.VarChar(500)
+  provider        String              @db.VarChar(50)
+  providerRawJson Json?
+  createdAt       DateTime            @default(now())
+  sessionItem     LearningSessionItem @relation(fields: [sessionItemId], references: [id], onDelete: Cascade)
+
+  @@index([sessionItemId])
+  @@index([childId, createdAt])
 }

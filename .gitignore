@@ -3,3 +3,4 @@ dist
 .hbuilderx
 .DS_Store
 Thumbs.db
+.env

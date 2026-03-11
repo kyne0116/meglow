@@ -1,30 +1,49 @@
-import { Logger } from '@nestjs/common';
+import { BadRequestException, Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { AppModule } from './app.module';
+import { ApiExceptionFilter } from './common/filters/api-exception.filter';
 
 declare const module: any;
 async function bootstrap() {
   const logger = new Logger('EntryPoint');
   const app = await NestFactory.create(AppModule);
+  app.setGlobalPrefix('api');
+  app.enableCors();
+  app.useGlobalFilters(new ApiExceptionFilter());
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      transform: true,
+      exceptionFactory: (errors) =>
+        new BadRequestException({
+          code: 'VALIDATION_ERROR',
+          message: 'request validation failed',
+          details: errors.map((error) => ({
+            field: error.property,
+            errors: Object.values(error.constraints ?? {}),
+          })),
+        }),
+    }),
+  );
 
   const config = new DocumentBuilder()
-    .setTitle('Leaves Tracker')
-    .setDescription('Api Docs for leaves tracker')
+    .setTitle('Meglow API')
+    .setDescription('Phase 1 API for AI companion')
     .setVersion('1.0')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('docs', app, document);
 
-  const PORT = 5002;
+  const port = Number(process.env.PORT || '5002');
 
-  await app.listen(PORT);
+  await app.listen(port);
 
   if (module.hot) {
     module.hot.accept();
     module.hot.dispose(() => app.close());
   }
-  logger.log(`Server running on http://localhost:${PORT}`);
+  logger.log(`Server running on http://localhost:${port}/api`);
 }
 bootstrap();
