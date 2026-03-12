@@ -1,79 +1,79 @@
 <template>
   <view class="container">
-    <view class="title">Pending Push Center</view>
-    <button class="refresh-btn" :loading="loading" @tap="loadPending">Refresh</button>
+    <view class="title">待审批推送</view>
+    <button class="refresh-btn" :loading="loading" @tap="loadPending">刷新</button>
 
-    <view v-if="pending.length === 0 && !loading" class="empty">No pending pushes.</view>
+    <view v-if="pending.length === 0 && !loading" class="empty">当前没有待审批推送。</view>
 
     <view v-for="item in pending" :key="item.id" class="card">
       <view class="card-title">{{ item.childName }}: {{ item.summary }}</view>
-      <view class="line">Reason: {{ item.reason }}</view>
-      <view class="line">Expected: {{ item.expectedOutcome }}</view>
-      <view class="line">Scheduled: {{ formatTime(item.scheduledAt) }}</view>
+      <view class="line">原因：{{ item.reason }}</view>
+      <view class="line">预期结果：{{ item.expectedOutcome }}</view>
+      <view class="line">计划时间：{{ formatTime(item.scheduledAt) }}</view>
 
       <view class="actions">
-        <button size="mini" type="primary" :loading="approvingId === item.id" @tap="approve(item.id)">Approve</button>
-        <button size="mini" :loading="approvingId === item.id" @tap="startModify(item)">Modify</button>
-        <button size="mini" :loading="approvingId === item.id" @tap="postpone(item.id)">Postpone 1h</button>
-        <button size="mini" :loading="approvingId === item.id" class="reject" @tap="reject(item.id)">Reject</button>
+        <button size="mini" type="primary" :loading="approvingId === item.id" @tap="approve(item.id)">通过</button>
+        <button size="mini" :loading="approvingId === item.id" @tap="startModify(item)">修改</button>
+        <button size="mini" :loading="approvingId === item.id" @tap="postpone(item.id)">延后 1 小时</button>
+        <button size="mini" :loading="approvingId === item.id" class="reject" @tap="reject(item.id)">拒绝</button>
       </view>
 
       <view v-if="editingPushId === item.id" class="modify-panel">
-        <view class="panel-title">Modify Push</view>
+        <view class="panel-title">修改推送</view>
 
         <view class="field">
-          <text class="label">Adjustment Mode</text>
-          <picker :range="adjustmentModeOptions" :value="selectedAdjustmentModeIndex" @change="onAdjustmentModeChange">
-            <view class="input">{{ adjustmentModeOptions[selectedAdjustmentModeIndex] }}</view>
+          <text class="label">调整模式</text>
+          <picker :range="adjustmentModeLabels" :value="selectedAdjustmentModeIndex" @change="onAdjustmentModeChange">
+            <view class="input">{{ adjustmentModeLabels[selectedAdjustmentModeIndex] }}</view>
           </picker>
         </view>
 
         <view class="field">
-          <text class="label">Words Limit (optional, 1-50)</text>
-          <input v-model="wordsLimitInput" class="input" type="number" placeholder="e.g. 8" />
+          <text class="label">单次单词上限（可选，1-50）</text>
+          <input v-model="wordsLimitInput" class="input" type="number" placeholder="例如：8" />
         </view>
 
         <view class="field">
-          <text class="label">Comment</text>
-          <textarea v-model="modifyComment" class="textarea" placeholder="describe why this task is modified" />
+          <text class="label">备注</text>
+          <textarea v-model="modifyComment" class="textarea" placeholder="请说明为什么要修改这条任务" />
         </view>
 
         <view class="field">
-          <text class="label">Original Content JSON</text>
+          <text class="label">原始内容 JSON</text>
           <textarea :value="originalContentJson" class="textarea preview" disabled />
         </view>
 
         <view class="field">
-          <text class="label">Modified Content JSON</text>
+          <text class="label">修改后内容 JSON</text>
           <textarea v-model="modifiedContentJson" class="textarea" />
           <view v-if="modifiedContentError" class="error-text">{{ modifiedContentError }}</view>
         </view>
 
         <view class="field">
-          <text class="label">Structured Fields (JSON Linked)</text>
-          <input v-model="structuredModeInput" class="input" placeholder="mode, e.g. word_review" />
-          <input v-model="structuredDueWordsInput" class="input" type="number" placeholder="dueWords, e.g. 10" />
+          <text class="label">结构化字段（与 JSON 联动）</text>
+          <input v-model="structuredModeInput" class="input" placeholder="mode，例如：word_review" />
+          <input v-model="structuredDueWordsInput" class="input" type="number" placeholder="dueWords，例如：10" />
           <input
             v-model="structuredWordsCsv"
             class="input"
-            placeholder="words CSV, e.g. apple,banana,orange"
+            placeholder="words CSV，例如：apple,banana,orange"
           />
-          <input v-model="structuredCoachHintInput" class="input" placeholder="coachHint, optional" />
-          <input v-model="structuredPriorityInput" class="input" placeholder="priority, optional" />
+          <input v-model="structuredCoachHintInput" class="input" placeholder="coachHint，可选" />
+          <input v-model="structuredPriorityInput" class="input" placeholder="priority，可选" />
         </view>
 
         <view class="field">
-          <text class="label">Final Payload Preview</text>
+          <text class="label">最终请求预览</text>
           <textarea :value="modifyPreviewText" class="textarea preview" disabled />
         </view>
 
         <view class="panel-actions">
-          <button size="mini" @tap="applyStructuredFieldsToJson">Apply Fields To JSON</button>
-          <button size="mini" @tap="loadStructuredFieldsFromJson">Load Fields From JSON</button>
-          <button size="mini" @tap="resetContentToOriginal">Reset Content</button>
-          <button size="mini" @tap="cancelModify">Cancel</button>
+          <button size="mini" @tap="applyStructuredFieldsToJson">应用字段到 JSON</button>
+          <button size="mini" @tap="loadStructuredFieldsFromJson">从 JSON 读取字段</button>
+          <button size="mini" @tap="resetContentToOriginal">重置内容</button>
+          <button size="mini" @tap="cancelModify">取消</button>
           <button size="mini" type="primary" :loading="approvingId === item.id" @tap="submitModify(item.id)">
-            Submit Modify
+            提交修改
           </button>
         </view>
       </view>
@@ -99,10 +99,11 @@ const approvingId = ref("");
 const pending = ref<PendingPush[]>([]);
 
 const editingPushId = ref("");
-const adjustmentModeOptions = ["lite_review_mode", "normal_review_mode", "focus_pronunciation_mode"];
+const adjustmentModeOptions = ["lite_review_mode", "normal_review_mode", "focus_pronunciation_mode"] as const;
+const adjustmentModeLabels = ["轻量复习", "标准复习", "强化发音"];
 const selectedAdjustmentModeIndex = ref(0);
 const wordsLimitInput = ref("");
-const modifyComment = ref("modified in parent miniapp");
+const modifyComment = ref("在家长小程序中修改");
 const originalContentJson = ref("{}");
 const modifiedContentJson = ref("{}");
 const structuredModeInput = ref("");
@@ -117,7 +118,7 @@ const modifyPreviewText = computed(() => {
   const normalizedWordsLimit = Number.isInteger(wordsLimit) ? wordsLimit : undefined;
   const parsed = safeParseJsonObject(modifiedContentJson.value);
   if (!parsed.ok) {
-    return `Invalid modified JSON: ${parsed.error}`;
+    return `修改后 JSON 无效：${parsed.error}`;
   }
   return JSON.stringify(buildModifyContent(parsed.value, normalizedWordsLimit), null, 2);
 });
@@ -135,7 +136,7 @@ onShow(async () => {
 async function ensureSessionAndLoad(): Promise<void> {
   sessionStore.loadFromStorage();
   if (!sessionStore.accessToken) {
-    uni.showToast({ title: "Please login first", icon: "none" });
+    uni.showToast({ title: "请先登录", icon: "none" });
     uni.reLaunch({
       url: "/pages/auth/login/index"
     });
@@ -155,7 +156,7 @@ async function loadPending(): Promise<void> {
       cancelModify();
     }
   } catch (error) {
-    const message = error instanceof Error ? error.message : "load failed";
+    const message = error instanceof Error ? error.message : "加载失败";
     uni.showToast({ title: message, icon: "none" });
   } finally {
     loading.value = false;
@@ -165,14 +166,14 @@ async function loadPending(): Promise<void> {
 async function approve(pushId: string): Promise<void> {
   await applyAction(pushId, {
     action: "APPROVE",
-    comment: "approved in parent miniapp"
+    comment: "在家长小程序中通过"
   });
 }
 
 async function reject(pushId: string): Promise<void> {
   await applyAction(pushId, {
     action: "REJECT",
-    comment: "rejected in parent miniapp"
+    comment: "在家长小程序中拒绝"
   });
 }
 
@@ -181,7 +182,7 @@ async function postpone(pushId: string): Promise<void> {
   await applyAction(pushId, {
     action: "POSTPONE",
     postponedUntil,
-    comment: "postponed for one hour in parent miniapp"
+    comment: "在家长小程序中延后 1 小时"
   });
 }
 
@@ -189,7 +190,7 @@ function startModify(item: PendingPush): void {
   editingPushId.value = item.id;
   selectedAdjustmentModeIndex.value = 0;
   wordsLimitInput.value = "";
-  modifyComment.value = "modified in parent miniapp";
+  modifyComment.value = "在家长小程序中修改";
   const base = normalizeContent(item.content);
   const baseText = JSON.stringify(base, null, 2);
   originalContentJson.value = baseText;
@@ -209,7 +210,7 @@ function cancelModify(): void {
   editingPushId.value = "";
   selectedAdjustmentModeIndex.value = 0;
   wordsLimitInput.value = "";
-  modifyComment.value = "modified in parent miniapp";
+  modifyComment.value = "在家长小程序中修改";
   originalContentJson.value = "{}";
   modifiedContentJson.value = "{}";
   clearStructuredFields();
@@ -226,19 +227,19 @@ function onAdjustmentModeChange(event: PickerChangeEvent): void {
 async function submitModify(pushId: string): Promise<void> {
   const wordsLimit = wordsLimitInput.value.trim() ? Number(wordsLimitInput.value.trim()) : undefined;
   if (wordsLimit !== undefined && (!Number.isInteger(wordsLimit) || wordsLimit < 1 || wordsLimit > 50)) {
-    uni.showToast({ title: "Words limit must be 1-50", icon: "none" });
+    uni.showToast({ title: "单词上限必须在 1-50 之间", icon: "none" });
     return;
   }
 
   const parsed = safeParseJsonObject(modifiedContentJson.value);
   if (!parsed.ok) {
-    uni.showToast({ title: `Invalid modified JSON: ${parsed.error}`, icon: "none" });
+    uni.showToast({ title: `修改后 JSON 无效：${parsed.error}`, icon: "none" });
     return;
   }
 
   const payload: ApprovePushRequest = {
     action: "MODIFY",
-    comment: modifyComment.value.trim() || "modified in parent miniapp",
+    comment: modifyComment.value.trim() || "在家长小程序中修改",
     modifiedContent: buildModifyContent(parsed.value, wordsLimit)
   };
   await applyAction(pushId, payload);
@@ -247,7 +248,7 @@ async function submitModify(pushId: string): Promise<void> {
 function applyStructuredFieldsToJson(): void {
   const parsed = safeParseJsonObject(modifiedContentJson.value);
   if (!parsed.ok) {
-    uni.showToast({ title: `Invalid JSON: ${parsed.error}`, icon: "none" });
+    uni.showToast({ title: `JSON 无效：${parsed.error}`, icon: "none" });
     return;
   }
 
@@ -260,7 +261,7 @@ function applyStructuredFieldsToJson(): void {
   const dueWords = structuredDueWordsInput.value.trim() ? Number(structuredDueWordsInput.value.trim()) : undefined;
   if (dueWords !== undefined) {
     if (!Number.isInteger(dueWords) || dueWords < 0) {
-      uni.showToast({ title: "dueWords must be >= 0", icon: "none" });
+      uni.showToast({ title: "dueWords 必须大于等于 0", icon: "none" });
       return;
     }
     next.dueWords = dueWords;
@@ -288,7 +289,7 @@ function applyStructuredFieldsToJson(): void {
 function loadStructuredFieldsFromJson(): void {
   const parsed = safeParseJsonObject(modifiedContentJson.value);
   if (!parsed.ok) {
-    uni.showToast({ title: `Invalid JSON: ${parsed.error}`, icon: "none" });
+    uni.showToast({ title: `JSON 无效：${parsed.error}`, icon: "none" });
     return;
   }
   hydrateStructuredFields(parsed.value);
@@ -379,7 +380,7 @@ function getNestedString(content: Record<string, unknown>, field: string, key: s
 
 function validateJsonObject(text: string): string {
   const parsed = safeParseJsonObject(text);
-  return parsed.ok ? "" : `Invalid JSON object: ${parsed.error}`;
+  return parsed.ok ? "" : `JSON 对象无效：${parsed.error}`;
 }
 
 function safeParseJsonObject(text: string): { ok: true; value: Record<string, unknown> } | { ok: false; error: string } {
@@ -391,13 +392,13 @@ function safeParseJsonObject(text: string): { ok: true; value: Record<string, un
   try {
     const parsed = JSON.parse(trimmed) as unknown;
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-      return { ok: false, error: "must be a JSON object" };
+      return { ok: false, error: "必须是 JSON 对象" };
     }
     return { ok: true, value: parsed as Record<string, unknown> };
   } catch (error) {
     return {
       ok: false,
-      error: error instanceof Error ? error.message : "invalid JSON"
+      error: error instanceof Error ? error.message : "JSON 无效"
     };
   }
 }
@@ -409,11 +410,11 @@ async function applyAction(pushId: string, payload: ApprovePushRequest): Promise
   approvingId.value = pushId;
   try {
     await postApprovePush(sessionStore.accessToken, pushId, payload);
-    uni.showToast({ title: "Updated", icon: "success" });
+    uni.showToast({ title: "已更新", icon: "success" });
     cancelModify();
     await loadPending();
   } catch (error) {
-    const message = error instanceof Error ? error.message : "update failed";
+    const message = error instanceof Error ? error.message : "更新失败";
     uni.showToast({ title: message, icon: "none" });
   } finally {
     approvingId.value = "";

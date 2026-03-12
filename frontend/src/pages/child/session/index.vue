@@ -1,25 +1,25 @@
 <template>
   <view class="container">
-    <view class="title">Learning Session</view>
+    <view class="title">学习会话</view>
 
-    <view v-if="loading" class="empty">Loading session...</view>
+    <view v-if="loading" class="empty">正在加载学习会话...</view>
     <view v-else-if="summary" class="panel">
       <view class="summary-card">
-        <view class="summary-title">Session Completed</view>
-        <view class="line">Total Items: {{ summary.totalItems }}</view>
-        <view class="line">Correct Items: {{ summary.correctItems }}</view>
-        <view class="line">Accuracy: {{ accuracyText }}</view>
-        <view class="line">New Words Learned: {{ summary.newWordsLearned }}</view>
-        <view class="line">Review Words Completed: {{ summary.reviewWordsCompleted }}</view>
+        <view class="summary-title">学习完成</view>
+        <view class="line">总题数：{{ summary.totalItems }}</view>
+        <view class="line">答对题数：{{ summary.correctItems }}</view>
+        <view class="line">正确率：{{ accuracyText }}</view>
+        <view class="line">新学单词数：{{ summary.newWordsLearned }}</view>
+        <view class="line">复习完成数：{{ summary.reviewWordsCompleted }}</view>
       </view>
 
-      <button type="primary" @tap="backToTasks">Back To Task Board</button>
+      <button type="primary" @tap="backToTasks">返回任务面板</button>
     </view>
 
     <view v-else-if="currentItem" class="panel">
       <view class="progress">
-        <text>Progress {{ currentIndex + 1 }}/{{ session?.items.length ?? 0 }}</text>
-        <text>{{ currentItem.itemType }}</text>
+        <text>进度 {{ currentIndex + 1 }}/{{ session?.items.length ?? 0 }}</text>
+        <text>{{ displayItemType }}</text>
       </view>
 
       <view class="question-card">
@@ -39,18 +39,18 @@
         <view v-else>
           <view class="question-title">{{ displayMeaning }}</view>
           <view class="question-subtitle">{{ displayPhonetic }}</view>
-          <view class="hint">Hint: {{ spellingHint }}</view>
-          <input v-model="spellingInput" class="input" placeholder="Type the word" />
-          <button type="primary" :loading="submitting" @tap="submitSpellingAnswer">Submit Answer</button>
+          <view class="hint">提示：{{ spellingHint }}</view>
+          <input v-model="spellingInput" class="input" placeholder="请输入单词" />
+          <button type="primary" :loading="submitting" @tap="submitSpellingAnswer">提交答案</button>
         </view>
       </view>
 
       <view v-if="feedbackCard" class="feedback-card">
-        <view class="feedback-title">{{ feedbackCard.isCorrect ? "Correct" : "Try Again Next Time" }}</view>
-        <view class="line">Feedback: {{ feedbackCard.feedback }}</view>
-        <view class="line">Guidance: {{ feedbackCard.guidance }}</view>
-        <view class="line">Encouragement: {{ feedbackCard.encouragement }}</view>
-        <view class="line">Score: {{ feedbackCard.score }}</view>
+        <view class="feedback-title">{{ feedbackCard.isCorrect ? "回答正确" : "下次继续加油" }}</view>
+        <view class="line">反馈：{{ feedbackCard.feedback }}</view>
+        <view class="line">指导：{{ feedbackCard.guidance }}</view>
+        <view class="line">鼓励：{{ feedbackCard.encouragement }}</view>
+        <view class="line">得分：{{ feedbackCard.score }}</view>
       </view>
 
       <button
@@ -59,11 +59,11 @@
         :loading="finishing"
         @tap="finishSession"
       >
-        Finish Session
+        完成学习
       </button>
     </view>
 
-    <view v-else class="empty">No session item found.</view>
+    <view v-else class="empty">未找到学习题目。</view>
   </view>
 </template>
 
@@ -101,6 +101,15 @@ const meaningOptions = computed(() => {
 });
 const displayWord = computed(() => String(currentPrompt.value.word ?? ""));
 const displayMeaning = computed(() => String(currentPrompt.value.meaningZh ?? ""));
+const displayItemType = computed(() => {
+  if (currentItem.value?.itemType === "WORD_MEANING") {
+    return "词义题";
+  }
+  if (currentItem.value?.itemType === "WORD_SPELLING") {
+    return "拼写题";
+  }
+  return currentItem.value?.itemType ?? "";
+});
 const displayPhonetic = computed(() => {
   const phonetic = String(currentPrompt.value.phonetic ?? "").trim();
   return phonetic || "-";
@@ -136,7 +145,7 @@ onLoad(async (options) => {
 
   const nextSessionId = typeof options?.sessionId === "string" ? options.sessionId : "";
   if (!nextSessionId) {
-    uni.showToast({ title: "Missing sessionId", icon: "none" });
+    uni.showToast({ title: "缺少 sessionId", icon: "none" });
     return;
   }
 
@@ -168,7 +177,7 @@ async function submitMeaningAnswer(selected: string): Promise<void> {
 
 async function submitSpellingAnswer(): Promise<void> {
   if (!spellingInput.value.trim()) {
-    uni.showToast({ title: "Please type the word", icon: "none" });
+    uni.showToast({ title: "请输入单词", icon: "none" });
     return;
   }
   await submitAnswer({ text: spellingInput.value.trim() });
@@ -239,7 +248,7 @@ function toErrorMessage(error: unknown): string {
   if (error instanceof Error && error.message) {
     return error.message;
   }
-  return "request failed";
+  return "请求失败";
 }
 </script>
 

@@ -1,7 +1,9 @@
 export type RequestMethod = "GET" | "POST" | "PUT";
 
 export const API_BASE_STORAGE_KEY = "meglow_api_base";
-const DEFAULT_API_BASE = process.env.UNI_APP_API_BASE?.trim() || "http://localhost:5002/api";
+// Mini Program runtime does not provide Node globals like `process`.
+// Keep the default static and let the login page override it per device/network.
+const DEFAULT_API_BASE = "http://localhost:5002/api";
 
 interface RequestOptions {
   token?: string;

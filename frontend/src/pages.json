@@ -3,37 +3,37 @@
     {
       "path": "pages/auth/login/index",
       "style": {
-        "navigationBarTitleText": "Login"
+        "navigationBarTitleText": "登录"
       }
     },
     {
       "path": "pages/parent/home/index",
       "style": {
-        "navigationBarTitleText": "Parent"
+        "navigationBarTitleText": "家长首页"
       }
     },
     {
       "path": "pages/parent/approval/index",
       "style": {
-        "navigationBarTitleText": "Pending Push Center"
+        "navigationBarTitleText": "待审批推送"
       }
     },
     {
       "path": "pages/parent/settings/learning/index",
       "style": {
-        "navigationBarTitleText": "Learning Settings"
+        "navigationBarTitleText": "学习设置"
       }
     },
     {
       "path": "pages/child/home/index",
       "style": {
-        "navigationBarTitleText": "Child"
+        "navigationBarTitleText": "孩子任务"
       }
     },
     {
       "path": "pages/child/session/index",
       "style": {
-        "navigationBarTitleText": "Learning Session"
+        "navigationBarTitleText": "学习会话"
       }
     }
   ],

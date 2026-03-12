@@ -1,42 +1,42 @@
 <template>
   <view class="container">
-    <view class="title">Child Task Board</view>
+    <view class="title">孩子任务面板</view>
 
-    <view v-if="children.length === 0 && !loading" class="empty">No child found. Please create child data first.</view>
+    <view v-if="children.length === 0 && !loading" class="empty">未找到孩子档案，请先创建孩子数据。</view>
 
     <view v-else class="panel">
       <view class="field">
-        <text class="label">Child</text>
+        <text class="label">孩子</text>
         <picker :range="childNames" :value="selectedChildIndex" @change="onChildChange">
           <view class="picker-value">{{ childNames[selectedChildIndex] }}</view>
         </picker>
       </view>
 
       <view class="field">
-        <text class="label">Date Filter (YYYY-MM-DD, optional)</text>
-        <input v-model="dateFilter" class="input" placeholder="e.g. 2026-03-11" @blur="onDateFilterBlur" />
+        <text class="label">日期筛选（YYYY-MM-DD，可选）</text>
+        <input v-model="dateFilter" class="input" placeholder="例如：2026-03-11" @blur="onDateFilterBlur" />
       </view>
 
       <view class="quick-row">
-        <button size="mini" @tap="applyTodayFilter">Today</button>
-        <button size="mini" @tap="clearDateFilter">Clear Date</button>
+        <button size="mini" @tap="applyTodayFilter">今天</button>
+        <button size="mini" @tap="clearDateFilter">清空日期</button>
       </view>
 
       <view class="field">
-        <text class="label">Status Filter</text>
-        <picker :range="statusFilterOptions" :value="selectedStatusFilterIndex" @change="onStatusFilterChange">
-          <view class="picker-value">{{ statusFilterOptions[selectedStatusFilterIndex] }}</view>
+        <text class="label">状态筛选</text>
+        <picker :range="statusFilterLabels" :value="selectedStatusFilterIndex" @change="onStatusFilterChange">
+          <view class="picker-value">{{ statusFilterLabels[selectedStatusFilterIndex] }}</view>
         </picker>
       </view>
 
-      <button class="refresh-btn" :loading="loading" @tap="loadTasks">Refresh Tasks</button>
+      <button class="refresh-btn" :loading="loading" @tap="loadTasks">刷新任务</button>
 
       <view class="summary">
-        <text>Total: {{ tasks.length }}</text>
-        <text>Filtered: {{ filteredTasks.length }}</text>
-        <text>Deliverable: {{ filteredDeliverableTasks.length }}</text>
-        <text>Learnable: {{ filteredLearnableTasks.length }}</text>
-        <text>Completable: {{ filteredCompletableTasks.length }}</text>
+        <text>总数：{{ tasks.length }}</text>
+        <text>筛选后：{{ filteredTasks.length }}</text>
+        <text>可投递：{{ filteredDeliverableTasks.length }}</text>
+        <text>可学习：{{ filteredLearnableTasks.length }}</text>
+        <text>可完成：{{ filteredCompletableTasks.length }}</text>
       </view>
 
       <view class="quick-row">
@@ -46,7 +46,7 @@
           :loading="batchDelivering"
           @tap="deliverFilteredTasks"
         >
-          Deliver Filtered
+          批量投递
         </button>
         <button
           size="mini"
@@ -55,16 +55,16 @@
           :loading="batchCompleting"
           @tap="completeFilteredTasks"
         >
-          Complete Filtered
+          批量完成
         </button>
       </view>
 
-      <view v-if="filteredTasks.length === 0 && !loading" class="empty">No tasks for selected filters.</view>
+      <view v-if="filteredTasks.length === 0 && !loading" class="empty">当前筛选条件下没有任务。</view>
 
       <view v-for="item in filteredTasks" :key="item.id" class="task-card">
         <view class="task-title">{{ item.summary }}</view>
-        <view class="line">Status: {{ item.status }}</view>
-        <view class="line">Scheduled: {{ formatTime(item.scheduledAt) }}</view>
+        <view class="line">状态：{{ formatStatus(item.status) }}</view>
+        <view class="line">计划时间：{{ formatTime(item.scheduledAt) }}</view>
 
         <view class="actions">
           <button
@@ -73,7 +73,7 @@
             :loading="deliveringId === item.id"
             @tap="deliverTask(item.id)"
           >
-            Mark Delivered
+            标记为已投递
           </button>
           <button
             v-if="item.status === 'DELIVERED'"
@@ -82,7 +82,7 @@
             :loading="startingTaskId === item.id"
             @tap="startLearning(item.id)"
           >
-            Start Learning
+            开始学习
           </button>
           <button
             v-if="item.status === 'DELIVERED'"
@@ -90,7 +90,7 @@
             :loading="completingId === item.id"
             @tap="completeTask(item.id)"
           >
-            Mark Completed
+            标记为已完成
           </button>
         </view>
       </view>
@@ -135,9 +135,10 @@ const tasks = ref<ChildTask[]>([]);
 const dateFilter = ref("");
 
 const statusFilterOptions: StatusFilter[] = ["ALL", "APPROVED", "MODIFIED", "DELIVERED", "COMPLETED"];
+const statusFilterLabels = ["全部", "已通过", "已修改", "已投递", "已完成"];
 const selectedStatusFilterIndex = ref(0);
 
-const childNames = computed(() => children.value.map((item) => `${item.name} (Grade ${item.grade})`));
+const childNames = computed(() => children.value.map((item) => `${item.name}（${item.grade} 年级）`));
 const selectedChildId = computed(() => children.value[selectedChildIndex.value]?.id ?? "");
 const selectedStatusFilter = computed(() => statusFilterOptions[selectedStatusFilterIndex.value] ?? "ALL");
 const filteredTasks = computed(() => {
@@ -165,7 +166,7 @@ onShow(async () => {
 async function initialize(): Promise<void> {
   sessionStore.loadFromStorage();
   if (!sessionStore.accessToken) {
-    uni.showToast({ title: "Please login first", icon: "none" });
+    uni.showToast({ title: "请先登录", icon: "none" });
     uni.reLaunch({
       url: "/pages/auth/login/index"
     });
@@ -243,7 +244,7 @@ async function completeTask(pushId: string): Promise<void> {
   completingId.value = pushId;
   try {
     await postCompletePush(sessionStore.accessToken, pushId);
-    uni.showToast({ title: "Completed", icon: "success" });
+    uni.showToast({ title: "已完成", icon: "success" });
     await loadTasks();
   } catch (error) {
     uni.showToast({ title: toErrorMessage(error), icon: "none" });
@@ -259,7 +260,7 @@ async function deliverTask(pushId: string): Promise<void> {
   deliveringId.value = pushId;
   try {
     await postDeliverPush(sessionStore.accessToken, pushId);
-    uni.showToast({ title: "Delivered", icon: "success" });
+    uni.showToast({ title: "已投递", icon: "success" });
     await loadTasks();
   } catch (error) {
     uni.showToast({ title: toErrorMessage(error), icon: "none" });
@@ -281,7 +282,7 @@ async function deliverFilteredTasks(): Promise<void> {
     } catch {}
   }
   batchDelivering.value = false;
-  uni.showToast({ title: `Delivered ${success}/${filteredDeliverableTasks.value.length}`, icon: "none" });
+  uni.showToast({ title: `已投递 ${success}/${filteredDeliverableTasks.value.length}`, icon: "none" });
   await loadTasks();
 }
 
@@ -298,7 +299,7 @@ async function completeFilteredTasks(): Promise<void> {
     } catch {}
   }
   batchCompleting.value = false;
-  uni.showToast({ title: `Completed ${success}/${filteredCompletableTasks.value.length}`, icon: "none" });
+  uni.showToast({ title: `已完成 ${success}/${filteredCompletableTasks.value.length}`, icon: "none" });
   await loadTasks();
 }
 
@@ -364,11 +365,26 @@ function formatTime(value: string): string {
   return value.replace("T", " ").replace(".000Z", "Z");
 }
 
+function formatStatus(value: ChildTask["status"]): string {
+  switch (value) {
+    case "APPROVED":
+      return "已通过";
+    case "MODIFIED":
+      return "已修改";
+    case "DELIVERED":
+      return "已投递";
+    case "COMPLETED":
+      return "已完成";
+    default:
+      return value;
+  }
+}
+
 function toErrorMessage(error: unknown): string {
   if (error instanceof Error && error.message) {
     return error.message;
   }
-  return "request failed";
+  return "请求失败";
 }
 </script>
 

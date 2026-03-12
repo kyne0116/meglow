@@ -1,13 +1,13 @@
 <template>
   <view class="container">
-    <view class="title">Parent Home</view>
-    <view class="desc">Current phase: parent settings and push approval center</view>
-    <view class="meta">Family: {{ sessionStore.familyId || "-" }}</view>
+    <view class="title">家长首页</view>
+    <view class="desc">当前可体验家长学习设置与待审批推送流程</view>
+    <view class="meta">家庭 ID：{{ sessionStore.familyId || "-" }}</view>
 
-    <button class="action-btn" type="primary" @tap="goApprovalCenter">Pending Push Center</button>
-    <button class="action-btn" @tap="goLearningSettings">Learning Settings</button>
-    <button class="action-btn" @tap="goChildTaskBoard">Child Task Board</button>
-    <button class="action-btn danger" @tap="logout">Logout</button>
+    <button class="action-btn" type="primary" @tap="goApprovalCenter">待审批推送</button>
+    <button class="action-btn" @tap="goLearningSettings">学习设置</button>
+    <button class="action-btn" @tap="goChildTaskBoard">孩子任务面板</button>
+    <button class="action-btn danger" @tap="logout">退出登录</button>
   </view>
 </template>
 

@@ -1,49 +1,49 @@
 <template>
   <view class="container">
-    <view class="title">Learning Settings</view>
+    <view class="title">学习设置</view>
 
-    <view v-if="children.length === 0" class="empty">No child found. Please create a child first.</view>
+    <view v-if="children.length === 0" class="empty">未找到孩子档案，请先创建孩子。</view>
 
     <view v-else class="panel">
       <view class="field">
-        <text class="label">Child</text>
+        <text class="label">孩子</text>
         <picker :range="childNames" :value="selectedChildIndex" @change="onChildChange">
           <view class="picker-value">{{ childNames[selectedChildIndex] }}</view>
         </picker>
       </view>
 
       <view class="field switch-field">
-        <text class="label">Auto Approve</text>
+        <text class="label">自动通过</text>
         <switch :checked="autoApprove" @change="onAutoApproveChange" />
       </view>
 
       <view class="field">
-        <text class="label">Words Per Session (1-50)</text>
+        <text class="label">每次学习单词数（1-50）</text>
         <input v-model="wordsPerSessionInput" class="input" type="number" />
       </view>
 
       <view class="field">
-        <text class="label">Daily Duration Minutes (5-240)</text>
+        <text class="label">每日学习时长（分钟，5-240）</text>
         <input v-model="dailyDurationInput" class="input" type="number" />
       </view>
 
       <view class="field">
-        <text class="label">Weekday Window (HH:mm)</text>
+        <text class="label">工作日时间段（HH:mm）</text>
         <view class="row">
-          <input v-model="weekdayStart" class="input half" placeholder="start e.g. 18:30" />
-          <input v-model="weekdayEnd" class="input half" placeholder="end e.g. 20:00" />
+          <input v-model="weekdayStart" class="input half" placeholder="开始，例如：18:30" />
+          <input v-model="weekdayEnd" class="input half" placeholder="结束，例如：20:00" />
         </view>
       </view>
 
       <view class="field">
-        <text class="label">Weekend Window (HH:mm)</text>
+        <text class="label">周末时间段（HH:mm）</text>
         <view class="row">
-          <input v-model="weekendStart" class="input half" placeholder="start e.g. 09:00" />
-          <input v-model="weekendEnd" class="input half" placeholder="end e.g. 10:30" />
+          <input v-model="weekendStart" class="input half" placeholder="开始，例如：09:00" />
+          <input v-model="weekendEnd" class="input half" placeholder="结束，例如：10:30" />
         </view>
       </view>
 
-      <button class="save-btn" type="primary" :loading="saving || loading" @tap="saveSettings">Save Settings</button>
+      <button class="save-btn" type="primary" :loading="saving || loading" @tap="saveSettings">保存设置</button>
     </view>
   </view>
 </template>
@@ -88,7 +88,7 @@ const weekdayEnd = ref("");
 const weekendStart = ref("");
 const weekendEnd = ref("");
 
-const childNames = computed(() => children.value.map((item) => `${item.name} (Grade ${item.grade})`));
+const childNames = computed(() => children.value.map((item) => `${item.name}（${item.grade} 年级）`));
 const selectedChildId = computed(() => children.value[selectedChildIndex.value]?.id ?? "");
 
 onLoad(async () => {
@@ -99,7 +99,7 @@ async function initialize(): Promise<void> {
   sessionStore.loadFromStorage();
   const token = sessionStore.accessToken;
   if (!token) {
-    uni.showToast({ title: "Please login first", icon: "none" });
+    uni.showToast({ title: "请先登录", icon: "none" });
     uni.reLaunch({
       url: "/pages/auth/login/index"
     });
@@ -162,34 +162,34 @@ function onAutoApproveChange(event: SwitchChangeEvent): void {
 async function saveSettings(): Promise<void> {
   const token = sessionStore.accessToken;
   if (!token) {
-    uni.showToast({ title: "Please login first", icon: "none" });
+    uni.showToast({ title: "请先登录", icon: "none" });
     return;
   }
 
   if (!selectedChildId.value) {
-    uni.showToast({ title: "No child selected", icon: "none" });
+    uni.showToast({ title: "请选择孩子", icon: "none" });
     return;
   }
 
   const wordsPerSession = Number(wordsPerSessionInput.value);
   const dailyDurationMin = Number(dailyDurationInput.value);
   if (!Number.isInteger(wordsPerSession) || wordsPerSession < 1 || wordsPerSession > 50) {
-    uni.showToast({ title: "Words per session must be 1-50", icon: "none" });
+    uni.showToast({ title: "每次学习单词数必须在 1-50 之间", icon: "none" });
     return;
   }
   if (!Number.isInteger(dailyDurationMin) || dailyDurationMin < 5 || dailyDurationMin > 240) {
-    uni.showToast({ title: "Daily duration must be 5-240", icon: "none" });
+    uni.showToast({ title: "每日学习时长必须在 5-240 分钟之间", icon: "none" });
     return;
   }
 
   const weekdayWindows = buildTimeWindows(weekdayStart.value, weekdayEnd.value);
   if (weekdayWindows === null) {
-    uni.showToast({ title: "Invalid weekday time window", icon: "none" });
+    uni.showToast({ title: "工作日时间段格式不正确", icon: "none" });
     return;
   }
   const weekendWindows = buildTimeWindows(weekendStart.value, weekendEnd.value);
   if (weekendWindows === null) {
-    uni.showToast({ title: "Invalid weekend time window", icon: "none" });
+    uni.showToast({ title: "周末时间段格式不正确", icon: "none" });
     return;
   }
 
@@ -204,7 +204,7 @@ async function saveSettings(): Promise<void> {
   saving.value = true;
   try {
     await putChildSettings(token, selectedChildId.value, payload);
-    uni.showToast({ title: "Saved", icon: "success" });
+    uni.showToast({ title: "保存成功", icon: "success" });
   } catch (error) {
     uni.showToast({ title: toErrorMessage(error), icon: "none" });
   } finally {
@@ -235,7 +235,7 @@ function toErrorMessage(error: unknown): string {
   if (error instanceof Error && error.message) {
     return error.message;
   }
-  return "request failed";
+  return "请求失败";
 }
 </script>
 
