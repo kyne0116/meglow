@@ -119,6 +119,11 @@ export interface LearningSession {
   status: "IN_PROGRESS" | "COMPLETED" | "ABANDONED";
   startedAt: string;
   finishedAt?: string | null;
+  taskOverview: {
+    summary: string;
+    focusSummary: string | null;
+    coachHint: string | null;
+  } | null;
   items: LearningSessionItem[];
 }
 

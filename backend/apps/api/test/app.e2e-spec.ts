@@ -857,6 +857,12 @@ describe('Meglow business flow (e2e)', () => {
       .set(authHeader)
       .expect(200);
 
+    expect(sessionDetailResponse.body.taskOverview).toEqual({
+      summary: expect.any(String),
+      focusSummary: expect.stringContaining('review'),
+      coachHint: expect.any(String),
+    });
+
     let firstPronunciationWord = '';
 
     for (const item of sessionDetailResponse.body.items as Array<{

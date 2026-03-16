@@ -6,6 +6,7 @@ describe('LearningService pronunciation evaluation', () => {
   const serviceAccess = service as never as {
     evaluateAnswer: Function;
     buildEnglishWordSummaries: Function;
+    buildTaskOverview: Function;
   };
 
   test('returns encouraging feedback for a strong pronunciation self-rating', () => {
@@ -127,5 +128,23 @@ describe('LearningService pronunciation evaluation', () => {
         incorrectItems: ['WORD_PRONUNCIATION'],
       },
     ]);
+  });
+
+  test('buildTaskOverview summarizes english word task content', () => {
+    const result = serviceAccess.buildTaskOverview(
+      'today english practice',
+      {
+        mode: 'word_learning',
+        dueWords: 2,
+        newWords: 1,
+        coachHint: 'review due words first, then unlock new ones',
+      },
+    );
+
+    expect(result).toEqual({
+      summary: 'today english practice',
+      focusSummary: 'review 2 due words and add 1 new words',
+      coachHint: 'review due words first, then unlock new ones',
+    });
   });
 });

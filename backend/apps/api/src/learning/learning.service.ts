@@ -59,6 +59,12 @@ type SessionItemRecord = {
   result?: Record<string, unknown> | null;
 };
 
+type TaskOverviewRecord = {
+  summary: string;
+  focusSummary: string | null;
+  coachHint: string | null;
+};
+
 export interface LearningSessionRecord {
   id: string;
   taskId: string;
@@ -67,11 +73,13 @@ export interface LearningSessionRecord {
   status: 'IN_PROGRESS' | 'COMPLETED' | 'ABANDONED';
   startedAt: string;
   finishedAt?: string | null;
+  taskOverview: TaskOverviewRecord | null;
   items: SessionItemRecord[];
 }
 
 type TaskWithSessionContext = {
   id: string;
+  summary: string;
   childId: string;
   status: TaskStatus;
   contentJson: Prisma.JsonValue;
@@ -149,7 +157,16 @@ export class LearningService {
     }
 
     if (task.sessions[0]) {
-      return this.toSessionRecord(task.sessions[0], true);
+      return this.toSessionRecord(
+        {
+          ...task.sessions[0],
+          task: {
+            summary: task.summary,
+            contentJson: task.contentJson,
+          },
+        },
+        true,
+      );
     }
 
     const taskContent = this.asObject(task.contentJson);
@@ -180,6 +197,12 @@ export class LearningService {
         },
       },
       include: {
+        task: {
+          select: {
+            summary: true,
+            contentJson: true,
+          },
+        },
         items: {
           orderBy: {
             sequence: 'asc',
@@ -446,6 +469,12 @@ export class LearningService {
           id: session.id,
         },
         include: {
+          task: {
+            select: {
+              summary: true,
+              contentJson: true,
+            },
+          },
           items: {
             orderBy: {
               sequence: 'asc',
@@ -535,6 +564,12 @@ export class LearningService {
           id: session.id,
         },
         include: {
+          task: {
+            select: {
+              summary: true,
+              contentJson: true,
+            },
+          },
           items: {
             orderBy: {
               sequence: 'asc',
@@ -820,6 +855,10 @@ export class LearningService {
       status: SessionStatus;
       startedAt: Date;
       finishedAt: Date | null;
+      task?: {
+        summary: string;
+        contentJson: Prisma.JsonValue;
+      } | null;
       items: LearningSessionItem[];
     },
     includeResults: boolean,
@@ -832,6 +871,12 @@ export class LearningService {
       status: session.status,
       startedAt: session.startedAt.toISOString(),
       finishedAt: session.finishedAt?.toISOString() ?? null,
+      taskOverview: session.task
+        ? this.buildTaskOverview(
+            session.task.summary,
+            this.asObject(session.task.contentJson),
+          )
+        : null,
       items: session.items.map((item) => ({
         id: item.id,
         itemType: item.itemType as
@@ -847,6 +892,41 @@ export class LearningService {
             }
           : {}),
       })),
+    };
+  }
+
+  private buildTaskOverview(
+    summary: string,
+    taskContent: Record<string, unknown>,
+  ): TaskOverviewRecord {
+    const mode = String(taskContent.mode ?? '').trim();
+    const coachHint = this.readString(taskContent.coachHint) ?? null;
+
+    if (mode === 'word_learning' || mode === 'word_review') {
+      const dueWords = Number(taskContent.dueWords ?? 0);
+      const newWords = Number(taskContent.newWords ?? 0);
+      return {
+        summary,
+        focusSummary: `review ${dueWords} due words and add ${newWords} new words`,
+        coachHint,
+      };
+    }
+
+    if (mode === 'textbook_content_review') {
+      const subjectName = this.readString(taskContent.subjectName) ?? 'textbook';
+      const nodeTitle = this.readString(taskContent.nodeTitle) ?? 'current node';
+      const totalContentItems = Number(taskContent.totalContentItems ?? 0);
+      return {
+        summary,
+        focusSummary: `${subjectName} / ${nodeTitle} / ${totalContentItems} content items`,
+        coachHint,
+      };
+    }
+
+    return {
+      summary,
+      focusSummary: null,
+      coachHint,
     };
   }
 

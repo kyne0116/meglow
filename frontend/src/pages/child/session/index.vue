@@ -31,6 +31,17 @@
     </view>
 
     <view v-else-if="currentItem" class="panel">
+      <view v-if="session?.taskOverview" class="summary-card">
+        <view class="summary-title">本轮任务</view>
+        <view class="line">{{ session.taskOverview.summary }}</view>
+        <view v-if="session.taskOverview.focusSummary" class="line">
+          任务要点：{{ session.taskOverview.focusSummary }}
+        </view>
+        <view v-if="session.taskOverview.coachHint" class="line">
+          提示：{{ session.taskOverview.coachHint }}
+        </view>
+      </view>
+
       <view class="progress">
         <text>进度 {{ currentIndex + 1 }}/{{ session?.items.length ?? 0 }}</text>
         <text>{{ displayItemType }}</text>
