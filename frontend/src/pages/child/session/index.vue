@@ -27,7 +27,12 @@
         </view>
       </view>
 
-      <button type="primary" @tap="backToTasks">返回任务面板</button>
+      <view v-if="summaryNextStep" class="summary-card">
+        <view class="summary-title">{{ summaryNextStep.title }}</view>
+        <view class="line">{{ summaryNextStep.description }}</view>
+      </view>
+
+      <button type="primary" @tap="backToTasks">{{ summaryNextStep?.actionLabel ?? "返回任务面板" }}</button>
     </view>
 
     <view v-else-if="currentItem" class="panel">
@@ -117,7 +122,9 @@
 import { onLoad } from "@dcloudio/uni-app";
 import { computed, ref } from "vue";
 import {
+  ChildTask,
   FinishLearningSessionResponse,
+  getChildTasks,
   getLearningSession,
   LearningSession,
   postFinishLearningSession,
@@ -129,6 +136,7 @@ import {
   getLearningItemTypeLabel,
   type PronunciationSelfRating
 } from "./item-helpers";
+import { buildSummaryNextStep, type SummaryNextStep } from "./summary-next-step";
 import { useSessionStore } from "../../../stores/session";
 
 const sessionStore = useSessionStore();
@@ -140,6 +148,7 @@ const currentIndex = ref(0);
 const spellingInput = ref("");
 const feedbackCard = ref<SubmitLearningAnswerResponse | null>(null);
 const summary = ref<FinishLearningSessionResponse["summary"] | null>(null);
+const summaryNextStep = ref<SummaryNextStep | null>(null);
 const sessionId = ref("");
 const pronunciationRatingOptions: Array<{
   value: PronunciationSelfRating;
@@ -217,6 +226,7 @@ async function loadSession(): Promise<void> {
     currentIndex.value =
       firstUnansweredIndex >= 0 ? firstUnansweredIndex : Math.max(session.value.items.length - 1, 0);
     feedbackCard.value = null;
+    summaryNextStep.value = null;
   } catch (error) {
     uni.showToast({ title: toErrorMessage(error), icon: "none" });
   } finally {
@@ -288,6 +298,7 @@ async function finishSession(): Promise<void> {
   try {
     const result = await postFinishLearningSession(sessionStore.accessToken, sessionId.value);
     summary.value = result.summary;
+    summaryNextStep.value = await loadSummaryNextStep(result.summary.needsReviewWords.length);
   } catch (error) {
     uni.showToast({ title: toErrorMessage(error), icon: "none" });
   } finally {
@@ -299,6 +310,27 @@ function backToTasks(): void {
   uni.redirectTo({
     url: "/pages/child/home/index"
   });
+}
+
+async function loadSummaryNextStep(needsReviewWordCount: number): Promise<SummaryNextStep> {
+  const fallback = buildSummaryNextStep([], {
+    currentTaskId: session.value?.taskId ?? "",
+    needsReviewWordCount
+  });
+
+  if (!sessionStore.accessToken || !session.value?.childId) {
+    return fallback;
+  }
+
+  try {
+    const tasks = await getChildTasks(sessionStore.accessToken, session.value.childId);
+    return buildSummaryNextStep(tasks as ChildTask[], {
+      currentTaskId: session.value.taskId,
+      needsReviewWordCount
+    });
+  } catch {
+    return fallback;
+  }
 }
 
 function formatIncorrectItems(

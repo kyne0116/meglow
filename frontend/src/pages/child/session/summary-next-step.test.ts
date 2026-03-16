@@ -1,0 +1,63 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { buildSummaryNextStep } from "./summary-next-step.ts";
+
+test("buildSummaryNextStep prefers remaining delivered tasks", () => {
+  const result = buildSummaryNextStep(
+    [
+      { id: "task-current", status: "COMPLETED" },
+      { id: "task-next", status: "DELIVERED" },
+      { id: "task-later", status: "APPROVED" }
+    ],
+    { currentTaskId: "task-current", needsReviewWordCount: 1 }
+  );
+
+  assert.deepEqual(result, {
+    title: "下一步：继续学习剩余任务",
+    description: "任务面板里还有 1 条可直接开始的任务，返回后可以继续学习。",
+    actionLabel: "返回任务面板继续学习"
+  });
+});
+
+test("buildSummaryNextStep falls back to deliverable tasks", () => {
+  const result = buildSummaryNextStep(
+    [
+      { id: "task-current", status: "COMPLETED" },
+      { id: "task-next", status: "APPROVED" },
+      { id: "task-later", status: "MODIFIED" }
+    ],
+    { currentTaskId: "task-current", needsReviewWordCount: 0 }
+  );
+
+  assert.deepEqual(result, {
+    title: "下一步：还有待投递任务",
+    description: "任务面板里还有 2 条任务待投递，返回后先标记已投递，再开始学习。",
+    actionLabel: "返回任务面板处理任务"
+  });
+});
+
+test("buildSummaryNextStep explains review wait when no visible task remains", () => {
+  const result = buildSummaryNextStep([{ id: "task-current", status: "COMPLETED" }], {
+    currentTaskId: "task-current",
+    needsReviewWordCount: 2
+  });
+
+  assert.deepEqual(result, {
+    title: "下一步：等待家长审批复习任务",
+    description: "本次有 2 个待复习单词，系统会生成下一轮复习推送，需家长审批后继续。",
+    actionLabel: "返回任务面板查看进度"
+  });
+});
+
+test("buildSummaryNextStep keeps a generic fallback when nothing else is queued", () => {
+  const result = buildSummaryNextStep([{ id: "task-current", status: "COMPLETED" }], {
+    currentTaskId: "task-current",
+    needsReviewWordCount: 0
+  });
+
+  assert.deepEqual(result, {
+    title: "下一步：返回任务面板查看安排",
+    description: "本轮学习已完成，返回任务面板查看今天是否还有新的学习任务。",
+    actionLabel: "返回任务面板"
+  });
+});
