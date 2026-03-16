@@ -11,6 +11,16 @@
       <view class="line">预期结果：{{ item.expectedOutcome }}</view>
       <view class="line">计划时间：{{ formatTime(item.scheduledAt) }}</view>
 
+      <view v-if="getApprovalInsight(item)" class="line">
+        类型：{{ getApprovalInsight(item)?.modeLabel }}
+      </view>
+      <view v-if="getApprovalInsight(item)?.focusReviewSummary" class="line">
+        {{ getApprovalInsight(item)?.focusReviewSummary }}
+      </view>
+      <view v-if="getApprovalInsight(item)?.coachHint" class="line">
+        学习提示：{{ getApprovalInsight(item)?.coachHint }}
+      </view>
+
       <view class="actions">
         <button size="mini" type="primary" :loading="approvingId === item.id" @tap="approve(item.id)">通过</button>
         <button size="mini" :loading="approvingId === item.id" @tap="startModify(item)">修改</button>
@@ -86,6 +96,7 @@ import { onLoad, onShow } from "@dcloudio/uni-app";
 import { computed, ref } from "vue";
 import { ApprovePushRequest, getPendingPushes, PendingPush, postApprovePush } from "../../../services/api";
 import { useSessionStore } from "../../../stores/session";
+import { buildApprovalInsight } from "./approval-insights";
 
 interface PickerChangeEvent {
   detail: {
@@ -222,6 +233,10 @@ function onAdjustmentModeChange(event: PickerChangeEvent): void {
     return;
   }
   selectedAdjustmentModeIndex.value = nextIndex;
+}
+
+function getApprovalInsight(item: PendingPush) {
+  return buildApprovalInsight(item.content);
 }
 
 async function submitModify(pushId: string): Promise<void> {
