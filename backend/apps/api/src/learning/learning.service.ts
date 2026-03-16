@@ -25,6 +25,28 @@ type SessionProgress = {
   total: number;
 };
 
+type LearningSummaryWord = {
+  word: string;
+  meaningZh: string;
+  phonetic: string | null;
+};
+
+type LearningReviewWord = LearningSummaryWord & {
+  incorrectItems: Array<
+    'WORD_MEANING' | 'WORD_SPELLING' | 'WORD_PRONUNCIATION' | 'CONTENT_REVIEW'
+  >;
+};
+
+type LearningSessionSummary = {
+  totalItems: number;
+  correctItems: number;
+  accuracy: number;
+  newWordsLearned: number;
+  reviewWordsCompleted: number;
+  masteredWords: LearningSummaryWord[];
+  needsReviewWords: LearningReviewWord[];
+};
+
 type SessionItemRecord = {
   id: string;
   itemType:
@@ -278,13 +300,7 @@ export class LearningService {
   ): Promise<{
     sessionId: string;
     status: 'COMPLETED';
-    summary: {
-      totalItems: number;
-      correctItems: number;
-      accuracy: number;
-      newWordsLearned: number;
-      reviewWordsCompleted: number;
-    };
+    summary: LearningSessionSummary;
   }> {
     const session = await this.prismaService.learningSession.findFirst({
       where: {
@@ -539,13 +555,7 @@ export class LearningService {
   }): Promise<{
     sessionId: string;
     status: 'COMPLETED';
-    summary: {
-      totalItems: number;
-      correctItems: number;
-      accuracy: number;
-      newWordsLearned: number;
-      reviewWordsCompleted: number;
-    };
+    summary: LearningSessionSummary;
   }> {
     const wordIds = Array.from(
       new Set(
@@ -576,6 +586,7 @@ export class LearningService {
     const reviewWordsCompleted = wordIds.filter((wordId) =>
       existingProgressByWordId.has(wordId),
     ).length;
+    const wordSummaries = this.buildEnglishWordSummaries(session.items);
     const now = new Date();
 
     await this.prismaService.$transaction(async (prisma) => {
@@ -625,6 +636,21 @@ export class LearningService {
             accuracy,
             newWordsLearned,
             reviewWordsCompleted,
+            masteredWords: wordSummaries
+              .filter((item) => item.incorrectItems.length === 0)
+              .map(({ word, meaningZh, phonetic }) => ({
+                word,
+                meaningZh,
+                phonetic,
+              })),
+            needsReviewWords: wordSummaries
+              .filter((item) => item.incorrectItems.length > 0)
+              .map(({ word, meaningZh, phonetic, incorrectItems }) => ({
+                word,
+                meaningZh,
+                phonetic,
+                incorrectItems,
+              })),
           },
         },
       });
@@ -649,6 +675,21 @@ export class LearningService {
         accuracy,
         newWordsLearned,
         reviewWordsCompleted,
+        masteredWords: wordSummaries
+          .filter((item) => item.incorrectItems.length === 0)
+          .map(({ word, meaningZh, phonetic }) => ({
+            word,
+            meaningZh,
+            phonetic,
+          })),
+        needsReviewWords: wordSummaries
+          .filter((item) => item.incorrectItems.length > 0)
+          .map(({ word, meaningZh, phonetic, incorrectItems }) => ({
+            word,
+            meaningZh,
+            phonetic,
+            incorrectItems,
+          })),
       },
     };
   }
@@ -664,13 +705,7 @@ export class LearningService {
   }): Promise<{
     sessionId: string;
     status: 'COMPLETED';
-    summary: {
-      totalItems: number;
-      correctItems: number;
-      accuracy: number;
-      newWordsLearned: number;
-      reviewWordsCompleted: number;
-    };
+    summary: LearningSessionSummary;
   }> {
     const totalItems = session.items.length;
     const correctItems = session.items.filter(
@@ -744,6 +779,8 @@ export class LearningService {
             accuracy,
             newWordsLearned: 0,
             reviewWordsCompleted: 0,
+            masteredWords: [],
+            needsReviewWords: [],
           },
         },
       });
@@ -768,6 +805,8 @@ export class LearningService {
         accuracy,
         newWordsLearned: 0,
         reviewWordsCompleted: 0,
+        masteredWords: [],
+        needsReviewWords: [],
       },
     };
   }
@@ -964,6 +1003,57 @@ export class LearningService {
       totalAttempts: progress.totalAttempts + attemptCount,
       correctAttempts: progress.correctAttempts + correctCount,
     };
+  }
+
+  private buildEnglishWordSummaries(items: LearningSessionItem[]): Array<{
+    word: string;
+    meaningZh: string;
+    phonetic: string | null;
+    incorrectItems: Array<'WORD_MEANING' | 'WORD_SPELLING' | 'WORD_PRONUNCIATION'>;
+  }> {
+    const wordIds = Array.from(
+      new Set(items.map((item) => item.wordId).filter((wordId): wordId is string => Boolean(wordId))),
+    );
+
+    return wordIds.map((wordId) => {
+      const wordItems = items.filter((item) => item.wordId === wordId);
+      const prompts = wordItems.map((item) => this.asObject(item.promptJson));
+      const correctAnswers = wordItems.map((item) => this.asObject(item.correctAnswerJson));
+      const word =
+        prompts
+          .map((prompt) => this.readString(prompt.word))
+          .find((value): value is string => Boolean(value)) ?? wordId;
+      const meaningZh =
+        prompts
+          .map((prompt) => this.readString(prompt.meaningZh))
+          .find((value): value is string => Boolean(value)) ??
+        correctAnswers
+          .map((answer) => this.readString(answer.selected))
+          .find((value): value is string => Boolean(value)) ??
+        '';
+      const phonetic =
+        prompts
+          .map((prompt) => this.readString(prompt.phonetic))
+          .find((value): value is string => Boolean(value)) ?? null;
+      const incorrectItems = wordItems
+        .filter((item) => this.asObject(item.resultJson).isCorrect !== true)
+        .map((item) => item.itemType)
+        .filter(
+          (
+            item,
+          ): item is 'WORD_MEANING' | 'WORD_SPELLING' | 'WORD_PRONUNCIATION' =>
+            item === LearningItemType.WORD_MEANING ||
+            item === LearningItemType.WORD_SPELLING ||
+            item === LearningItemType.WORD_PRONUNCIATION,
+        );
+
+      return {
+        word,
+        meaningZh,
+        phonetic,
+        incorrectItems,
+      };
+    });
   }
 
   private computeNextReviewAt(now: Date, reviewStage: number): Date {

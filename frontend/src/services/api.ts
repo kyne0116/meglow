@@ -149,6 +149,17 @@ export interface FinishLearningSessionResponse {
     accuracy: number;
     newWordsLearned: number;
     reviewWordsCompleted: number;
+    masteredWords: Array<{
+      word: string;
+      meaningZh: string;
+      phonetic: string | null;
+    }>;
+    needsReviewWords: Array<{
+      word: string;
+      meaningZh: string;
+      phonetic: string | null;
+      incorrectItems: Array<"WORD_MEANING" | "WORD_SPELLING" | "WORD_PRONUNCIATION" | "CONTENT_REVIEW">;
+    }>;
   };
 }
 

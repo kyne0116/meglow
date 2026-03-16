@@ -13,6 +13,20 @@
         <view class="line">复习完成数：{{ summary.reviewWordsCompleted }}</view>
       </view>
 
+      <view v-if="summary.masteredWords.length" class="summary-card">
+        <view class="summary-title">本次已掌握</view>
+        <view v-for="item in summary.masteredWords" :key="`mastered-${item.word}`" class="line">
+          {{ item.word }} - {{ item.meaningZh }}
+        </view>
+      </view>
+
+      <view v-if="summary.needsReviewWords.length" class="summary-card">
+        <view class="summary-title">待复习单词</view>
+        <view v-for="item in summary.needsReviewWords" :key="`review-${item.word}`" class="line">
+          {{ item.word }} - {{ item.meaningZh }}（{{ formatIncorrectItems(item.incorrectItems) }}）
+        </view>
+      </view>
+
       <button type="primary" @tap="backToTasks">返回任务面板</button>
     </view>
 
@@ -274,6 +288,12 @@ function backToTasks(): void {
   uni.redirectTo({
     url: "/pages/child/home/index"
   });
+}
+
+function formatIncorrectItems(
+  incorrectItems: Array<"WORD_MEANING" | "WORD_SPELLING" | "WORD_PRONUNCIATION" | "CONTENT_REVIEW">
+): string {
+  return incorrectItems.map((itemType) => getLearningItemTypeLabel(itemType)).join(" / ");
 }
 
 function toErrorMessage(error: unknown): string {

@@ -857,6 +857,8 @@ describe('Meglow business flow (e2e)', () => {
       .set(authHeader)
       .expect(200);
 
+    let firstPronunciationWord = '';
+
     for (const item of sessionDetailResponse.body.items as Array<{
       id: string;
       itemType: 'WORD_MEANING' | 'WORD_SPELLING' | 'WORD_PRONUNCIATION';
@@ -871,10 +873,15 @@ describe('Meglow business flow (e2e)', () => {
                 ([, meaningZh]) => meaningZh === item.prompt.meaningZh,
               )?.[0],
             }
-            : {
-              completed: true,
-              selfRating: 'GOOD',
-            };
+            : firstPronunciationWord
+              ? {
+                  completed: true,
+                  selfRating: 'GOOD',
+                }
+              : {
+                  completed: true,
+                  selfRating: 'NEEDS_PRACTICE',
+                };
 
       const answerResponse = await request(app.getHttpServer())
         .post(`/api/learning/sessions/${sessionId}/answer`)
@@ -886,14 +893,21 @@ describe('Meglow business flow (e2e)', () => {
         .expect(201);
 
       if (item.itemType === 'WORD_PRONUNCIATION') {
-        expect(answerResponse.body.isCorrect).toBe(true);
-        expect(answerResponse.body.score).toBe(100);
-        expect(answerResponse.body.feedback).toBe(
-          'pronunciation felt smooth and clear',
-        );
+        if (!firstPronunciationWord) {
+          firstPronunciationWord = item.prompt.word ?? '';
+          expect(answerResponse.body.isCorrect).toBe(false);
+          expect(answerResponse.body.score).toBe(60);
+          expect(answerResponse.body.feedback).toBe(
+            'the word still needs another careful read',
+          );
+        } else {
+          expect(answerResponse.body.isCorrect).toBe(true);
+          expect(answerResponse.body.score).toBe(100);
+          expect(answerResponse.body.feedback).toBe(
+            'pronunciation felt smooth and clear',
+          );
+        }
       }
-
-      expect(answerResponse.body.isCorrect).toBe(true);
     }
 
     const finishResponse = await request(app.getHttpServer())
@@ -903,8 +917,24 @@ describe('Meglow business flow (e2e)', () => {
 
     expect(finishResponse.body.status).toBe('COMPLETED');
     expect(finishResponse.body.summary.totalItems).toBe(9);
-    expect(finishResponse.body.summary.correctItems).toBe(9);
+    expect(finishResponse.body.summary.correctItems).toBe(8);
     expect(finishResponse.body.summary.newWordsLearned).toBe(3);
+    expect(finishResponse.body.summary.masteredWords).toHaveLength(2);
+    expect(finishResponse.body.summary.masteredWords).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          word: expect.any(String),
+          meaningZh: expect.any(String),
+        }),
+      ]),
+    );
+    expect(finishResponse.body.summary.needsReviewWords).toEqual([
+      expect.objectContaining({
+        word: firstPronunciationWord,
+        meaningZh: expect.any(String),
+        incorrectItems: ['WORD_PRONUNCIATION'],
+      }),
+    ]);
 
     const completedTask = await prismaService.learningTask.findUnique({
       where: {

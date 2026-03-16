@@ -3,9 +3,13 @@ import { LearningService } from './learning.service';
 
 describe('LearningService pronunciation evaluation', () => {
   const service = new LearningService({} as never, {} as never);
+  const serviceAccess = service as never as {
+    evaluateAnswer: Function;
+    buildEnglishWordSummaries: Function;
+  };
 
   test('returns encouraging feedback for a strong pronunciation self-rating', () => {
-    const result = (service as never as { evaluateAnswer: Function }).evaluateAnswer(
+    const result = serviceAccess.evaluateAnswer(
       {
         itemType: LearningItemType.WORD_PRONUNCIATION,
         correctAnswerJson: {},
@@ -27,7 +31,7 @@ describe('LearningService pronunciation evaluation', () => {
   });
 
   test('returns practice guidance for a weak pronunciation self-rating', () => {
-    const result = (service as never as { evaluateAnswer: Function }).evaluateAnswer(
+    const result = serviceAccess.evaluateAnswer(
       {
         itemType: LearningItemType.WORD_PRONUNCIATION,
         correctAnswerJson: {},
@@ -49,7 +53,7 @@ describe('LearningService pronunciation evaluation', () => {
   });
 
   test('keeps backward compatibility for legacy pronunciation submissions', () => {
-    const result = (service as never as { evaluateAnswer: Function }).evaluateAnswer(
+    const result = serviceAccess.evaluateAnswer(
       {
         itemType: LearningItemType.WORD_PRONUNCIATION,
         correctAnswerJson: {},
@@ -67,5 +71,61 @@ describe('LearningService pronunciation evaluation', () => {
       guidance: 'continue to the next word after reading clearly',
       encouragement: 'good speaking practice',
     });
+  });
+
+  test('buildEnglishWordSummaries groups mastered and review information by word', () => {
+    const result = serviceAccess.buildEnglishWordSummaries([
+      {
+        wordId: 'word-1',
+        itemType: LearningItemType.WORD_MEANING,
+        promptJson: {
+          word: 'apple',
+          phonetic: '/ˈæp.əl/',
+        },
+        correctAnswerJson: {
+          selected: '苹果',
+        },
+        resultJson: {
+          isCorrect: true,
+        },
+      },
+      {
+        wordId: 'word-1',
+        itemType: LearningItemType.WORD_SPELLING,
+        promptJson: {
+          meaningZh: '苹果',
+          phonetic: '/ˈæp.əl/',
+        },
+        correctAnswerJson: {
+          text: 'apple',
+        },
+        resultJson: {
+          isCorrect: true,
+        },
+      },
+      {
+        wordId: 'word-1',
+        itemType: LearningItemType.WORD_PRONUNCIATION,
+        promptJson: {
+          word: 'apple',
+          phonetic: '/ˈæp.əl/',
+        },
+        correctAnswerJson: {
+          completed: true,
+        },
+        resultJson: {
+          isCorrect: false,
+        },
+      },
+    ]);
+
+    expect(result).toEqual([
+      {
+        word: 'apple',
+        meaningZh: '苹果',
+        phonetic: '/ˈæp.əl/',
+        incorrectItems: ['WORD_PRONUNCIATION'],
+      },
+    ]);
   });
 });
