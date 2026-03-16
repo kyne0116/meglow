@@ -4,6 +4,7 @@ export interface TaskInsight {
   coachHint: string;
   priorityLabel: string;
   previewWords: string[];
+  focusReviewSummary?: string;
 }
 
 export function buildTaskInsight(content: Record<string, unknown>): TaskInsight | null {
@@ -30,7 +31,8 @@ export function buildTaskInsight(content: Record<string, unknown>): TaskInsight 
       countSummary: `复习 ${dueWords} 个，新增 ${newWords} 个`,
       coachHint: String(content.coachHint ?? "").trim(),
       priorityLabel: toPriorityLabel(content.priority),
-      previewWords
+      previewWords,
+      focusReviewSummary: toFocusReviewSummary(content.focusReviewWords)
     };
   }
 
@@ -58,4 +60,42 @@ function toCount(value: unknown): number {
 
 function toPriorityLabel(value: unknown): string {
   return String(value ?? "").trim().toLowerCase() === "high" ? "高优先级" : "常规";
+}
+
+function toFocusReviewSummary(value: unknown): string | undefined {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+
+  const summary = value
+    .filter((item): item is Record<string, unknown> => typeof item === "object" && item !== null)
+    .slice(0, 2)
+    .map((item) => {
+      const word = String(item.word ?? "").trim();
+      const incorrectItems = Array.isArray(item.incorrectItems)
+        ? item.incorrectItems
+            .map((entry) => toItemTypeLabel(entry))
+            .filter(Boolean)
+            .join(" / ")
+        : "";
+      return word ? `${word}${incorrectItems ? `（${incorrectItems}）` : ""}` : "";
+    })
+    .filter(Boolean)
+    .join("、");
+
+  return summary ? `重点复习：${summary}` : undefined;
+}
+
+function toItemTypeLabel(value: unknown): string {
+  const itemType = String(value ?? "").trim().toUpperCase();
+  if (itemType === "WORD_PRONUNCIATION") {
+    return "朗读题";
+  }
+  if (itemType === "WORD_SPELLING") {
+    return "拼写题";
+  }
+  if (itemType === "WORD_MEANING") {
+    return "词义题";
+  }
+  return "";
 }

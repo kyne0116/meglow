@@ -69,6 +69,9 @@
         <view v-if="getTaskInsight(item)" class="task-insight">
           <view class="line">{{ getTaskInsight(item)?.modeLabel }} · {{ getTaskInsight(item)?.priorityLabel }}</view>
           <view class="line">任务要点：{{ getTaskInsight(item)?.countSummary }}</view>
+          <view v-if="getTaskInsight(item)?.focusReviewSummary" class="line">
+            {{ getTaskInsight(item)?.focusReviewSummary }}
+          </view>
           <view v-if="getTaskInsight(item)?.coachHint" class="line">提示：{{ getTaskInsight(item)?.coachHint }}</view>
           <view v-if="getTaskInsight(item)?.previewWords.length" class="line">
             词汇预览：{{ getTaskInsight(item)?.previewWords.join("、") }}

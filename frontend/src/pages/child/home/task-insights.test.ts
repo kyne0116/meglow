@@ -9,6 +9,10 @@ test("buildTaskInsight parses english task details", () => {
     newWords: 1,
     coachHint: "review due words first, then unlock new ones",
     priority: "high",
+    focusReviewWords: [
+      { word: "apple", incorrectItems: ["WORD_PRONUNCIATION"] },
+      { word: "banana", incorrectItems: ["WORD_SPELLING"] }
+    ],
     words: [
       { value: "apple", kind: "REVIEW" },
       { value: "banana", kind: "REVIEW" },
@@ -22,7 +26,8 @@ test("buildTaskInsight parses english task details", () => {
     countSummary: "复习 2 个，新增 1 个",
     coachHint: "review due words first, then unlock new ones",
     priorityLabel: "高优先级",
-    previewWords: ["apple（复习）", "banana（复习）", "orange（新词）"]
+    previewWords: ["apple（复习）", "banana（复习）", "orange（新词）"],
+    focusReviewSummary: "重点复习：apple（朗读题）、banana（拼写题）"
   });
 });
 

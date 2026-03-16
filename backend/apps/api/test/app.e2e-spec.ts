@@ -955,5 +955,24 @@ describe('Meglow business flow (e2e)', () => {
       },
     });
     expect(wordProgressCount).toBe(3);
+
+    const nextPendingPushesResponse = await request(app.getHttpServer())
+      .get('/api/pushes/pending')
+      .query({ childId })
+      .set(authHeader)
+      .expect(200);
+
+    expect(nextPendingPushesResponse.body).toHaveLength(1);
+    expect(nextPendingPushesResponse.body[0].content.focusReviewWords).toEqual([
+      expect.objectContaining({
+        word: firstPronunciationWord,
+        incorrectItems: ['WORD_PRONUNCIATION'],
+      }),
+    ]);
+    expect(
+      nextPendingPushesResponse.body[0].content.words.map(
+        (item: { value: string }) => item.value,
+      ),
+    ).toContain(firstPronunciationWord);
   });
 });

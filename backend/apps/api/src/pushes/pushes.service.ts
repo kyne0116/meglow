@@ -9,12 +9,13 @@ import {
   Prisma,
   PushStatus,
   ReviewStatus,
+  SessionStatus,
   SubjectCode,
   SubjectType,
   TaskStatus,
 } from '@prisma/client';
 import { CurrentParent } from '../common/interfaces/current-parent.interface';
-import { ContentService } from '../content/content.service';
+import { ContentService, RecommendedWord } from '../content/content.service';
 import { PrismaService } from '../persistence/prisma/prisma.service';
 import { createDefaultChildLearningSettings } from '../platform-config/platform-config.constants';
 import { ApprovePushDto } from './dto/approve-push.dto';
@@ -426,8 +427,6 @@ export class PushesService {
         status: {
           in: [
             PushStatus.PENDING_APPROVAL,
-            PushStatus.APPROVED,
-            PushStatus.MODIFIED,
             PushStatus.POSTPONED,
           ],
         },
@@ -456,45 +455,69 @@ export class PushesService {
     wordsPerSession: number,
     autoApprove: boolean,
   ): Promise<void> {
+    const reviewContext = await this.getRecentEnglishReviewContext(childId);
     const recommendedWords = await this.contentService.recommendWordsForChild(
       childId,
       wordsPerSession,
     );
+    const prioritizedWords = this.prioritizeRecommendedWords(
+      recommendedWords,
+      reviewContext.focusReviewWords,
+    );
 
-    if (recommendedWords.length === 0) {
+    if (prioritizedWords.length === 0) {
       return;
     }
 
-    const dueWords = recommendedWords.filter((word) => word.kind === 'REVIEW').length;
-    const newWords = recommendedWords.filter((word) => word.kind === 'NEW').length;
+    const dueWords = prioritizedWords.filter((word) => word.kind === 'REVIEW').length;
+    const newWords = prioritizedWords.filter((word) => word.kind === 'NEW').length;
     const status = autoApprove ? PushStatus.APPROVED : PushStatus.PENDING_APPROVAL;
+    const focusReviewWords = reviewContext.focusReviewWords.map((item) => ({
+      word: item.word,
+      meaningZh: item.meaningZh,
+      incorrectItems: item.incorrectItems,
+    }));
+    const reviewFocusReason =
+      focusReviewWords.length > 0
+        ? `Revisit ${focusReviewWords.map((item) => item.word).join(', ')} first`
+        : null;
+    const coachHint =
+      reviewContext.primaryWeakSkill && focusReviewWords.length > 0
+        ? `focus on ${reviewContext.primaryWeakSkill} for ${focusReviewWords
+            .map((item) => item.word)
+            .join(', ')} before unlocking new words`
+        : dueWords > 0
+          ? 'review due words first, then unlock new ones'
+          : 'focus on meaning recognition and spelling';
 
     const createdPush = await this.prismaService.learningPush.create({
       data: {
         childId,
         summary: `${childName} english practice task`,
         reason:
-          dueWords > 0
+          reviewFocusReason ??
+          (dueWords > 0
             ? `Review ${dueWords} due words and add ${newWords} new words`
-            : `Start ${newWords} new words for today's practice`,
-        expectedOutcome: `Finish ${recommendedWords.length} words meaning and spelling practice`,
+            : `Start ${newWords} new words for today's practice`),
+        expectedOutcome:
+          focusReviewWords.length > 0
+            ? `Fix the recent weak spots and finish ${prioritizedWords.length} words practice`
+            : `Finish ${prioritizedWords.length} words meaning and spelling practice`,
         status,
         scheduledAt: new Date(),
         contentJson: {
           mode: 'word_learning',
           dueWords,
           newWords,
-          words: recommendedWords.map((word) => ({
+          words: prioritizedWords.map((word) => ({
             id: word.id,
             value: word.value,
             meaningZh: word.meaningZh,
             phonetic: word.phonetic,
             kind: word.kind,
           })),
-          coachHint:
-            dueWords > 0
-              ? 'review due words first, then unlock new ones'
-              : 'focus on meaning recognition and spelling',
+          coachHint,
+          focusReviewWords,
           priority: dueWords > 0 ? 'high' : 'normal',
         },
         createdBy: 'rule_engine',
@@ -513,6 +536,183 @@ export class PushesService {
         },
       });
     }
+  }
+
+  private async getRecentEnglishReviewContext(childId: string): Promise<{
+    focusReviewWords: Array<{
+      id: string;
+      word: string;
+      meaningZh: string;
+      incorrectItems: string[];
+      recommendedWord: RecommendedWord | null;
+    }>;
+    primaryWeakSkill: string | null;
+  }> {
+    const latestSession = await this.prismaService.learningSession.findFirst({
+      where: {
+        childId,
+        subject: SubjectType.ENGLISH,
+        status: SessionStatus.COMPLETED,
+      },
+      orderBy: [{ finishedAt: 'desc' }, { startedAt: 'desc' }],
+      select: {
+        summaryJson: true,
+      },
+    });
+
+    const summary = this.asObject(latestSession?.summaryJson);
+    const needsReviewWords = Array.isArray(summary.needsReviewWords)
+      ? summary.needsReviewWords.filter(
+          (item): item is Record<string, unknown> =>
+            typeof item === 'object' && item !== null && !Array.isArray(item),
+        )
+      : [];
+
+    if (needsReviewWords.length === 0) {
+      return {
+        focusReviewWords: [],
+        primaryWeakSkill: null,
+      };
+    }
+
+    const reviewValues = needsReviewWords
+      .map((item) => this.readString(item.word))
+      .filter((item): item is string => Boolean(item));
+    const reviewWords = await this.prismaService.englishWord.findMany({
+      where: {
+        value: {
+          in: reviewValues,
+        },
+      },
+    });
+    const wordsByValue = new Map(reviewWords.map((item) => [item.value, item]));
+    const skillCounts = new Map<string, number>();
+
+    const focusReviewWords = needsReviewWords
+      .map((item) => {
+        const wordValue = this.readString(item.word);
+        if (!wordValue) {
+          return null;
+        }
+        const matchedWord = wordsByValue.get(wordValue);
+        const incorrectItems = Array.isArray(item.incorrectItems)
+          ? item.incorrectItems
+              .map((entry) => this.readString(entry))
+              .filter((entry): entry is string => Boolean(entry))
+          : [];
+
+        for (const incorrectItem of incorrectItems) {
+          skillCounts.set(incorrectItem, (skillCounts.get(incorrectItem) ?? 0) + 1);
+        }
+
+        return {
+          id: matchedWord?.id ?? wordValue,
+          word: wordValue,
+          meaningZh: this.readString(item.meaningZh) ?? matchedWord?.meaningZh ?? '',
+          incorrectItems,
+          recommendedWord: matchedWord
+            ? {
+                id: matchedWord.id,
+                value: matchedWord.value,
+                phonetic: matchedWord.phonetic,
+                meaningZh: matchedWord.meaningZh,
+                exampleSentence: matchedWord.exampleSentence,
+                imageHint: matchedWord.imageHint,
+                difficultyLevel: matchedWord.difficultyLevel,
+                k12Stage: matchedWord.k12Stage,
+                kind: 'REVIEW',
+              }
+            : null,
+        };
+      })
+      .filter(
+        (
+          item,
+        ): item is {
+          id: string;
+          word: string;
+          meaningZh: string;
+          incorrectItems: string[];
+          recommendedWord: RecommendedWord | null;
+        } => Boolean(item),
+      );
+
+    const primaryWeakSkill = Array.from(skillCounts.entries()).sort((left, right) => {
+      if (right[1] !== left[1]) {
+        return right[1] - left[1];
+      }
+      return left[0].localeCompare(right[0]);
+    })[0]?.[0];
+
+    return {
+      focusReviewWords,
+      primaryWeakSkill: this.toWeakSkillLabel(primaryWeakSkill),
+    };
+  }
+
+  private prioritizeRecommendedWords(
+    recommendedWords: RecommendedWord[],
+    focusReviewWords: Array<{
+      id: string;
+      word: string;
+      recommendedWord: RecommendedWord | null;
+    }>,
+  ): RecommendedWord[] {
+    if (focusReviewWords.length === 0) {
+      return recommendedWords;
+    }
+
+    const selectedIds = new Set<string>();
+    const prioritized: RecommendedWord[] = [];
+    const wordById = new Map(recommendedWords.map((item) => [item.id, item]));
+    const wordByValue = new Map(recommendedWords.map((item) => [item.value, item]));
+
+    for (const focusWord of focusReviewWords) {
+      const matched =
+        wordById.get(focusWord.id) ??
+        wordByValue.get(focusWord.word) ??
+        focusWord.recommendedWord;
+      if (!matched || selectedIds.has(matched.id)) {
+        continue;
+      }
+      prioritized.push({ ...matched, kind: 'REVIEW' });
+      selectedIds.add(matched.id);
+    }
+
+    for (const word of recommendedWords) {
+      if (selectedIds.has(word.id)) {
+        continue;
+      }
+      prioritized.push(word);
+      selectedIds.add(word.id);
+    }
+
+    return prioritized.slice(0, recommendedWords.length);
+  }
+
+  private toWeakSkillLabel(itemType?: string): string | null {
+    if (itemType === 'WORD_PRONUNCIATION') {
+      return 'pronunciation';
+    }
+    if (itemType === 'WORD_SPELLING') {
+      return 'spelling';
+    }
+    if (itemType === 'WORD_MEANING') {
+      return 'meaning recognition';
+    }
+    return null;
+  }
+
+  private readString(value: unknown): string | undefined {
+    return typeof value === 'string' && value.trim().length > 0 ? value : undefined;
+  }
+
+  private asObject(value: unknown): Record<string, unknown> {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      return {};
+    }
+
+    return value as Record<string, unknown>;
   }
 
   private async createTextbookPush(
