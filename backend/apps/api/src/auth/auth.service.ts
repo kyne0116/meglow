@@ -7,7 +7,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { ParentRole, Prisma } from '@prisma/client';
 import { randomUUID } from 'crypto';
-import { ACCESS_TOKEN_EXPIRES_IN } from './auth.constants';
+import { ACCESS_TOKEN_EXPIRES_IN, VERIFICATION_CODE_EXPIRES_IN_SEC } from './auth.constants';
 import { CurrentParent } from '../common/interfaces/current-parent.interface';
 import { PrismaService } from '../persistence/prisma/prisma.service';
 import { LoginDto } from './dto/login.dto';
@@ -48,11 +48,11 @@ export class AuthService {
       data: {
         phone: payload.phone,
         code: '123456',
-        expiresAt: new Date(now.getTime() + 60_000),
+        expiresAt: new Date(now.getTime() + VERIFICATION_CODE_EXPIRES_IN_SEC * 1000),
       },
     });
 
-    return { success: true, expiresInSec: 60 };
+    return { success: true, expiresInSec: VERIFICATION_CODE_EXPIRES_IN_SEC };
   }
 
   async login(payload: LoginDto): Promise<{

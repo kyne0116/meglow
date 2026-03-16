@@ -21,8 +21,18 @@ export interface ChildSummary {
   familyId: string;
   name: string;
   gender: "MALE" | "FEMALE";
+  birthDate?: string | null;
   grade: number;
   k12Stage: "LOWER_PRIMARY" | "MIDDLE_PRIMARY" | "UPPER_PRIMARY" | "JUNIOR_HIGH";
+  avatarUrl?: string | null;
+}
+
+export interface CreateChildRequest {
+  name: string;
+  gender: "MALE" | "FEMALE";
+  grade: number;
+  birthDate?: string;
+  avatarUrl?: string;
 }
 
 export interface TimeWindow {
@@ -95,7 +105,7 @@ export interface EnglishWord {
 
 export interface LearningSessionItem {
   id: string;
-  itemType: "WORD_MEANING" | "WORD_SPELLING";
+  itemType: "WORD_MEANING" | "WORD_SPELLING" | "WORD_PRONUNCIATION" | "CONTENT_REVIEW";
   sequence: number;
   prompt: Record<string, unknown>;
   result?: Record<string, unknown> | null;
@@ -159,6 +169,13 @@ export async function postLogin(payload: LoginRequest): Promise<LoginResponse> {
 
 export async function getChildren(token: string): Promise<ChildSummary[]> {
   return requestApi("GET", "/children", { token });
+}
+
+export async function postCreateChild(token: string, payload: CreateChildRequest): Promise<ChildSummary> {
+  return requestApi("POST", "/children", {
+    token,
+    data: payload as unknown as Record<string, unknown>
+  });
 }
 
 export async function getChildSettings(token: string, childId: string): Promise<ChildLearningSettings> {

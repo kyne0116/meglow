@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { K12Stage, Prisma, SubjectType } from '@prisma/client';
 import { PrismaService } from '../persistence/prisma/prisma.service';
+import { createDefaultChildLearningSettings } from '../platform-config/platform-config.constants';
 import { CreateChildDto } from './dto/create-child.dto';
 import {
   TimeWindowDto,
@@ -31,7 +32,7 @@ export interface ChildRecord {
 export interface ChildSettingsRecord {
   id: string;
   childId: string;
-  subject: 'ENGLISH';
+  subject: SubjectType;
   autoApprove: boolean;
   weekdayTimeWindows: TimeWindow[];
   weekendTimeWindows: TimeWindow[];
@@ -287,14 +288,7 @@ export class ChildrenService {
   }
 
   private defaultSettingsData() {
-    return {
-      subject: SubjectType.ENGLISH,
-      autoApprove: false,
-      weekdayTimeWindows: [{ start: '18:30', end: '20:00' }],
-      weekendTimeWindows: [{ start: '09:00', end: '10:30' }],
-      dailyDurationMin: 20,
-      wordsPerSession: 10,
-    };
+    return createDefaultChildLearningSettings();
   }
 
   private toK12Stage(grade: number): K12Stage {

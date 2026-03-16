@@ -8,6 +8,7 @@
   "scripts": {
     "prebuild": "rimraf dist",
     "build": "nest build",
+    "db:seed": "prisma db seed --schema prisma/schema.prisma",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
     "dev": "nest build --webpack --webpackPath webpack-hmr.config.js --watch",
@@ -20,6 +21,9 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json --runInBand",
     "test:ci": "jest --ci --runInBand"
+  },
+  "prisma": {
+    "seed": "ts-node --project tsconfig.json prisma/seed.ts"
   },
   "dependencies": {
     "@nestjs/common": "^10.1.3",

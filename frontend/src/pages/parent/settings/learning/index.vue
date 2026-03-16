@@ -59,6 +59,7 @@ import {
   TimeWindow,
   UpsertChildLearningSettingsRequest
 } from "../../../../services/api";
+import { resolveSelectedChildIndex } from "./selection";
 import { useSessionStore } from "../../../../stores/session";
 
 interface PickerChangeEvent {
@@ -79,6 +80,7 @@ const loading = ref(false);
 const saving = ref(false);
 const children = ref<ChildSummary[]>([]);
 const selectedChildIndex = ref(0);
+const requestedChildId = ref("");
 
 const autoApprove = ref(false);
 const wordsPerSessionInput = ref("10");
@@ -91,7 +93,8 @@ const weekendEnd = ref("");
 const childNames = computed(() => children.value.map((item) => `${item.name}（${item.grade} 年级）`));
 const selectedChildId = computed(() => children.value[selectedChildIndex.value]?.id ?? "");
 
-onLoad(async () => {
+onLoad(async (options) => {
+  requestedChildId.value = typeof options?.childId === "string" ? options.childId : "";
   await initialize();
 });
 
@@ -109,9 +112,9 @@ async function initialize(): Promise<void> {
   loading.value = true;
   try {
     children.value = await getChildren(token);
-    selectedChildIndex.value = 0;
+    selectedChildIndex.value = resolveSelectedChildIndex(children.value, requestedChildId.value);
     if (children.value.length > 0) {
-      await loadSettings(children.value[0].id);
+      await loadSettings(children.value[selectedChildIndex.value].id);
     }
   } catch (error) {
     uni.showToast({ title: toErrorMessage(error), icon: "none" });

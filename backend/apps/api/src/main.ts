@@ -3,6 +3,7 @@ import { NestFactory } from '@nestjs/core';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { ApiExceptionFilter } from './common/filters/api-exception.filter';
+import { getRuntimePort } from './config/runtime-config';
 
 declare const module: any;
 async function bootstrap() {
@@ -36,7 +37,7 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('docs', app, document);
 
-  const port = Number(process.env.PORT || '5002');
+  const port = getRuntimePort();
 
   await app.listen(port);
 

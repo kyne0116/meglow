@@ -19,7 +19,18 @@ export class ApiExceptionFilter implements ExceptionFilter {
       const payload = exception.getResponse();
 
       if (typeof payload === 'object' && payload !== null) {
-        response.status(status).json(payload);
+        if (this.isApiErrorPayload(payload)) {
+          response.status(status).json(payload);
+          return;
+        }
+
+        response.status(status).json({
+          code: this.codeFromStatus(status),
+          message: this.messageFromPayload(payload, exception.message),
+          details: {
+            path: request.url,
+          },
+        });
         return;
       }
 
@@ -59,5 +70,29 @@ export class ApiExceptionFilter implements ExceptionFilter {
       default:
         return 'HTTP_ERROR';
     }
+  }
+
+  private isApiErrorPayload(
+    payload: object,
+  ): payload is { code: string; message: string; details: unknown } {
+    return (
+      'code' in payload &&
+      'message' in payload &&
+      'details' in payload
+    );
+  }
+
+  private messageFromPayload(payload: object, fallback: string): string {
+    const value =
+      'message' in payload ? (payload as { message?: unknown }).message : undefined;
+
+    if (Array.isArray(value)) {
+      return value.join(', ');
+    }
+    if (typeof value === 'string' && value.trim()) {
+      return value;
+    }
+
+    return fallback;
   }
 }

@@ -4,6 +4,7 @@
     <view class="desc">当前可体验家长学习设置与待审批推送流程</view>
     <view class="meta">家庭 ID：{{ sessionStore.familyId || "-" }}</view>
 
+    <button class="action-btn" @tap="goCreateChild">创建孩子档案</button>
     <button class="action-btn" type="primary" @tap="goApprovalCenter">待审批推送</button>
     <button class="action-btn" @tap="goLearningSettings">学习设置</button>
     <button class="action-btn" @tap="goChildTaskBoard">孩子任务面板</button>
@@ -29,6 +30,12 @@ onShow(() => {
 function goLearningSettings(): void {
   uni.navigateTo({
     url: "/pages/parent/settings/learning/index"
+  });
+}
+
+function goCreateChild(): void {
+  uni.navigateTo({
+    url: "/pages/parent/children/create/index"
   });
 }
 

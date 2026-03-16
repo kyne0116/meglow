@@ -4,10 +4,19 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma, PushStatus, SubjectType, TaskStatus } from '@prisma/client';
+import {
+  BindingStatus,
+  Prisma,
+  PushStatus,
+  ReviewStatus,
+  SubjectCode,
+  SubjectType,
+  TaskStatus,
+} from '@prisma/client';
 import { CurrentParent } from '../common/interfaces/current-parent.interface';
 import { ContentService } from '../content/content.service';
 import { PrismaService } from '../persistence/prisma/prisma.service';
+import { createDefaultChildLearningSettings } from '../platform-config/platform-config.constants';
 import { ApprovePushDto } from './dto/approve-push.dto';
 
 export interface PendingPushRecord {
@@ -29,6 +38,26 @@ export interface TaskRecord {
   scheduledAt: string;
   content: Record<string, unknown>;
 }
+
+type TextbookContentCandidate = {
+  bindingId: string;
+  subjectCode: string;
+  subjectName: string;
+  editionId: string;
+  editionDisplayName: string;
+  volumeId: string;
+  volumeLabel: string;
+  nodeId: string;
+  nodeTitle: string;
+  contentItems: Array<{
+    contentItemId: string;
+    title: string;
+    itemType: string;
+    contentVersionId: string;
+    version: number;
+    isPrimary: boolean;
+  }>;
+};
 
 @Injectable()
 export class PushesService {
@@ -178,33 +207,32 @@ export class PushesService {
           },
         });
 
+        const taskData = {
+          summary: push.summary,
+          status:
+            nextStatus === PushStatus.APPROVED
+              ? TaskStatus.APPROVED
+              : TaskStatus.MODIFIED,
+          scheduledAt,
+          contentJson,
+          textbookContextJson: push.textbookContextJson as Prisma.InputJsonValue | undefined,
+          contentVersionSnapshotJson:
+            push.contentVersionSnapshotJson as Prisma.InputJsonValue | undefined,
+        };
+
         if (existingTask) {
           await prisma.learningTask.update({
             where: {
               id: existingTask.id,
             },
-            data: {
-              summary: push.summary,
-              status:
-                nextStatus === PushStatus.APPROVED
-                  ? TaskStatus.APPROVED
-                  : TaskStatus.MODIFIED,
-              scheduledAt,
-              contentJson,
-            },
+            data: taskData,
           });
         } else {
           await prisma.learningTask.create({
             data: {
               pushId: push.id,
               childId: push.childId,
-              summary: push.summary,
-              status:
-                nextStatus === PushStatus.APPROVED
-                  ? TaskStatus.APPROVED
-                  : TaskStatus.MODIFIED,
-              scheduledAt,
-              contentJson,
+              ...taskData,
             },
           });
         }
@@ -367,30 +395,14 @@ export class PushesService {
     });
 
     for (const child of children) {
-      const existingOpenPushCount = await this.prismaService.learningPush.count({
-        where: {
-          childId: child.id,
-          status: {
-            in: [
-              PushStatus.PENDING_APPROVAL,
-              PushStatus.APPROVED,
-              PushStatus.MODIFIED,
-              PushStatus.POSTPONED,
-            ],
-          },
-        },
-      });
+      const hasOpenWork = await this.hasOpenWork(child.id);
+      if (hasOpenWork) {
+        continue;
+      }
 
-      const existingOpenTaskCount = await this.prismaService.learningTask.count({
-        where: {
-          childId: child.id,
-          status: {
-            in: [TaskStatus.APPROVED, TaskStatus.MODIFIED, TaskStatus.DELIVERED],
-          },
-        },
-      });
-
-      if (existingOpenPushCount > 0 || existingOpenTaskCount > 0) {
+      const textbookCandidate = await this.findTextbookContentCandidate(child.id);
+      if (textbookCandidate) {
+        await this.createTextbookPush(child.id, child.name, textbookCandidate);
         continue;
       }
 
@@ -399,74 +411,289 @@ export class PushesService {
         (await this.prismaService.childLearningSettings.create({
           data: {
             childId: child.id,
-            subject: SubjectType.ENGLISH,
-            autoApprove: false,
-            weekdayTimeWindows: [{ start: '18:30', end: '20:00' }],
-            weekendTimeWindows: [{ start: '09:00', end: '10:30' }],
-            dailyDurationMin: 20,
-            wordsPerSession: 10,
+            ...createDefaultChildLearningSettings(),
           },
         }));
 
-      const recommendedWords = await this.contentService.recommendWordsForChild(
-        child.id,
-        settings.wordsPerSession,
-      );
+      await this.createEnglishPush(child.id, child.name, settings.wordsPerSession, settings.autoApprove);
+    }
+  }
 
-      if (recommendedWords.length === 0) {
+  private async hasOpenWork(childId: string): Promise<boolean> {
+    const existingOpenPushCount = await this.prismaService.learningPush.count({
+      where: {
+        childId,
+        status: {
+          in: [
+            PushStatus.PENDING_APPROVAL,
+            PushStatus.APPROVED,
+            PushStatus.MODIFIED,
+            PushStatus.POSTPONED,
+          ],
+        },
+      },
+    });
+
+    if (existingOpenPushCount > 0) {
+      return true;
+    }
+
+    const existingOpenTaskCount = await this.prismaService.learningTask.count({
+      where: {
+        childId,
+        status: {
+          in: [TaskStatus.APPROVED, TaskStatus.MODIFIED, TaskStatus.DELIVERED],
+        },
+      },
+    });
+
+    return existingOpenTaskCount > 0;
+  }
+
+  private async createEnglishPush(
+    childId: string,
+    childName: string,
+    wordsPerSession: number,
+    autoApprove: boolean,
+  ): Promise<void> {
+    const recommendedWords = await this.contentService.recommendWordsForChild(
+      childId,
+      wordsPerSession,
+    );
+
+    if (recommendedWords.length === 0) {
+      return;
+    }
+
+    const dueWords = recommendedWords.filter((word) => word.kind === 'REVIEW').length;
+    const newWords = recommendedWords.filter((word) => word.kind === 'NEW').length;
+    const status = autoApprove ? PushStatus.APPROVED : PushStatus.PENDING_APPROVAL;
+
+    const createdPush = await this.prismaService.learningPush.create({
+      data: {
+        childId,
+        summary: `${childName} english practice task`,
+        reason:
+          dueWords > 0
+            ? `Review ${dueWords} due words and add ${newWords} new words`
+            : `Start ${newWords} new words for today's practice`,
+        expectedOutcome: `Finish ${recommendedWords.length} words meaning and spelling practice`,
+        status,
+        scheduledAt: new Date(),
+        contentJson: {
+          mode: 'word_learning',
+          dueWords,
+          newWords,
+          words: recommendedWords.map((word) => ({
+            id: word.id,
+            value: word.value,
+            meaningZh: word.meaningZh,
+            phonetic: word.phonetic,
+            kind: word.kind,
+          })),
+          coachHint:
+            dueWords > 0
+              ? 'review due words first, then unlock new ones'
+              : 'focus on meaning recognition and spelling',
+          priority: dueWords > 0 ? 'high' : 'normal',
+        },
+        createdBy: 'rule_engine',
+      },
+    });
+
+    if (autoApprove) {
+      await this.prismaService.learningTask.create({
+        data: {
+          pushId: createdPush.id,
+          childId,
+          summary: createdPush.summary,
+          status: TaskStatus.APPROVED,
+          scheduledAt: createdPush.scheduledAt,
+          contentJson: createdPush.contentJson as Prisma.InputJsonValue,
+        },
+      });
+    }
+  }
+
+  private async createTextbookPush(
+    childId: string,
+    childName: string,
+    candidate: TextbookContentCandidate,
+  ): Promise<void> {
+    const contentItems = candidate.contentItems.map((item) => ({
+      contentItemId: item.contentItemId,
+      contentVersionId: item.contentVersionId,
+      title: item.title,
+      itemType: item.itemType,
+      version: item.version,
+      isPrimary: item.isPrimary,
+    }));
+
+    const textbookContext = {
+      bindingId: candidate.bindingId,
+      subjectCode: candidate.subjectCode,
+      subjectName: candidate.subjectName,
+      editionId: candidate.editionId,
+      editionDisplayName: candidate.editionDisplayName,
+      volumeId: candidate.volumeId,
+      volumeLabel: candidate.volumeLabel,
+      nodeId: candidate.nodeId,
+      nodeTitle: candidate.nodeTitle,
+    };
+
+    await this.prismaService.learningPush.create({
+      data: {
+        childId,
+        summary: `${childName} ${candidate.subjectName} textbook task`,
+        reason: `Continue ${candidate.subjectName} at ${candidate.nodeTitle}`,
+        expectedOutcome: `Review ${candidate.contentItems.length} textbook content items`,
+        status: PushStatus.PENDING_APPROVAL,
+        scheduledAt: new Date(),
+        contentJson: {
+          mode: 'textbook_content_review',
+          subjectCode: candidate.subjectCode,
+          subjectName: candidate.subjectName,
+          nodeId: candidate.nodeId,
+          nodeTitle: candidate.nodeTitle,
+          contentItems,
+          totalContentItems: candidate.contentItems.length,
+          coachHint: 'follow the current textbook node and finish the attached content items',
+          priority: 'normal',
+        },
+        textbookContextJson: textbookContext as Prisma.InputJsonValue,
+        contentVersionSnapshotJson: {
+          nodeId: candidate.nodeId,
+          items: contentItems,
+        } as Prisma.InputJsonValue,
+        createdBy: 'rule_engine',
+      },
+    });
+  }
+
+  private async findTextbookContentCandidate(
+    childId: string,
+  ): Promise<TextbookContentCandidate | null> {
+    const bindings = await this.prismaService.childSubjectBinding.findMany({
+      where: {
+        childId,
+        status: BindingStatus.ACTIVE,
+        subject: {
+          code: {
+            not: SubjectCode.ENGLISH,
+          },
+        },
+      },
+      include: {
+        subject: true,
+        edition: true,
+        volume: true,
+        currentNode: true,
+        progress: {
+          include: {
+            currentNode: true,
+          },
+        },
+      },
+      orderBy: [{ updatedAt: 'desc' }],
+    });
+
+    for (const binding of bindings) {
+      const preferredNodeId =
+        binding.currentNodeId ??
+        binding.progress?.currentNodeId ??
+        (await this.findFirstLeafNodeId(binding.volumeId));
+
+      if (!preferredNodeId) {
         continue;
       }
 
-      const dueWords = recommendedWords.filter((word) => word.kind === 'REVIEW').length;
-      const newWords = recommendedWords.filter((word) => word.kind === 'NEW').length;
-      const status = settings.autoApprove
-        ? PushStatus.APPROVED
-        : PushStatus.PENDING_APPROVAL;
-
-      const createdPush = await this.prismaService.learningPush.create({
-        data: {
-          childId: child.id,
-          summary: `${child.name} 今日英语学习任务`,
-          reason:
-            dueWords > 0
-              ? `${dueWords} 个单词到达复习节点，补充 ${newWords} 个新词保持节奏`
-              : `安排 ${newWords} 个新单词进入今日学习`,
-          expectedOutcome: `完成后预计掌握 ${recommendedWords.length} 个词的词义与拼写`,
-          status,
-          scheduledAt: new Date(),
-          contentJson: {
-            mode: 'word_learning',
-            dueWords,
-            newWords,
-            words: recommendedWords.map((word) => ({
-              id: word.id,
-              value: word.value,
-              meaningZh: word.meaningZh,
-              phonetic: word.phonetic,
-              kind: word.kind,
-            })),
-            coachHint:
-              dueWords > 0
-                ? 'review due words first, then unlock new ones'
-                : 'focus on meaning recognition and spelling',
-            priority: dueWords > 0 ? 'high' : 'normal',
-          },
-          createdBy: 'rule_engine',
+      const node = await this.prismaService.textbookNode.findUnique({
+        where: {
+          id: preferredNodeId,
+        },
+        select: {
+          id: true,
+          title: true,
         },
       });
 
-      if (settings.autoApprove) {
-        await this.prismaService.learningTask.create({
-          data: {
-            pushId: createdPush.id,
-            childId: child.id,
-            summary: createdPush.summary,
-            status: TaskStatus.APPROVED,
-            scheduledAt: createdPush.scheduledAt,
-            contentJson: createdPush.contentJson as Prisma.InputJsonValue,
-          },
+      if (!node) {
+        continue;
+      }
+
+      const links = await this.prismaService.textbookNodeContentItem.findMany({
+        where: {
+          textbookNodeId: node.id,
+        },
+        include: {
+          contentItem: true,
+          contentVersion: true,
+        },
+        orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+        take: 3,
+      });
+
+      const contentItems: TextbookContentCandidate['contentItems'] = [];
+
+      for (const link of links) {
+        const effectiveVersion =
+          link.contentVersion?.reviewStatus === ReviewStatus.PUBLISHED
+            ? link.contentVersion
+            : await this.prismaService.contentItemVersion.findFirst({
+                where: {
+                  contentItemId: link.contentItemId,
+                  reviewStatus: ReviewStatus.PUBLISHED,
+                },
+                orderBy: [{ version: 'desc' }, { createdAt: 'desc' }],
+              });
+
+        if (!effectiveVersion) {
+          continue;
+        }
+
+        contentItems.push({
+          contentItemId: link.contentItem.id,
+          title: link.contentItem.title,
+          itemType: link.contentItem.itemType,
+          contentVersionId: effectiveVersion.id,
+          version: effectiveVersion.version,
+          isPrimary: link.isPrimary,
         });
       }
+
+      if (contentItems.length === 0) {
+        continue;
+      }
+
+      return {
+        bindingId: binding.id,
+        subjectCode: binding.subject.code,
+        subjectName: binding.subject.name,
+        editionId: binding.edition.id,
+        editionDisplayName: binding.edition.displayName,
+        volumeId: binding.volume.id,
+        volumeLabel: binding.volume.volumeLabel,
+        nodeId: node.id,
+        nodeTitle: node.title,
+        contentItems,
+      };
     }
+
+    return null;
+  }
+
+  private async findFirstLeafNodeId(volumeId: string): Promise<string | null> {
+    const node = await this.prismaService.textbookNode.findFirst({
+      where: {
+        volumeId,
+        isLeaf: true,
+      },
+      orderBy: [{ depth: 'asc' }, { sortOrder: 'asc' }, { createdAt: 'asc' }],
+      select: {
+        id: true,
+      },
+    });
+
+    return node?.id ?? null;
   }
 }

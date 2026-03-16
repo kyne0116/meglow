@@ -36,12 +36,25 @@
           </button>
         </view>
 
-        <view v-else>
+        <view v-else-if="currentItem.itemType === 'WORD_SPELLING'">
           <view class="question-title">{{ displayMeaning }}</view>
           <view class="question-subtitle">{{ displayPhonetic }}</view>
           <view class="hint">提示：{{ spellingHint }}</view>
           <input v-model="spellingInput" class="input" placeholder="请输入单词" />
           <button type="primary" :loading="submitting" @tap="submitSpellingAnswer">提交答案</button>
+        </view>
+
+        <view v-else-if="currentItem.itemType === 'WORD_PRONUNCIATION'">
+          <view class="question-title">{{ displayWord }}</view>
+          <view class="question-subtitle">{{ displayPhonetic }}</view>
+          <view class="hint">{{ pronunciationInstruction }}</view>
+          <view v-if="pronunciationExample" class="line">例句：{{ pronunciationExample }}</view>
+          <button type="primary" :loading="submitting" @tap="submitPronunciationAnswer">我已朗读</button>
+        </view>
+
+        <view v-else>
+          <view class="question-title">{{ displayItemType }}</view>
+          <view class="hint">当前小程序暂未支持该题型。</view>
         </view>
       </view>
 
@@ -78,6 +91,7 @@ import {
   postSubmitLearningAnswer,
   SubmitLearningAnswerResponse
 } from "../../../services/api";
+import { buildPronunciationAnswer, getLearningItemTypeLabel } from "./item-helpers";
 import { useSessionStore } from "../../../stores/session";
 
 const sessionStore = useSessionStore();
@@ -101,20 +115,14 @@ const meaningOptions = computed(() => {
 });
 const displayWord = computed(() => String(currentPrompt.value.word ?? ""));
 const displayMeaning = computed(() => String(currentPrompt.value.meaningZh ?? ""));
-const displayItemType = computed(() => {
-  if (currentItem.value?.itemType === "WORD_MEANING") {
-    return "词义题";
-  }
-  if (currentItem.value?.itemType === "WORD_SPELLING") {
-    return "拼写题";
-  }
-  return currentItem.value?.itemType ?? "";
-});
+const displayItemType = computed(() => getLearningItemTypeLabel(currentItem.value?.itemType ?? ""));
 const displayPhonetic = computed(() => {
   const phonetic = String(currentPrompt.value.phonetic ?? "").trim();
   return phonetic || "-";
 });
 const spellingHint = computed(() => String(currentPrompt.value.hint ?? ""));
+const pronunciationInstruction = computed(() => String(currentPrompt.value.instruction ?? "请先朗读当前单词"));
+const pronunciationExample = computed(() => String(currentPrompt.value.exampleSentence ?? "").trim());
 const isLastItem = computed(() => {
   if (!session.value) {
     return false;
@@ -181,6 +189,10 @@ async function submitSpellingAnswer(): Promise<void> {
     return;
   }
   await submitAnswer({ text: spellingInput.value.trim() });
+}
+
+async function submitPronunciationAnswer(): Promise<void> {
+  await submitAnswer(buildPronunciationAnswer());
 }
 
 async function submitAnswer(answer: Record<string, unknown>): Promise<void> {

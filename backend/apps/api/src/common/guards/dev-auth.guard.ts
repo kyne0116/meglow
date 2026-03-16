@@ -2,15 +2,32 @@ import {
   CanActivate,
   ExecutionContext,
   Injectable,
-  UnauthorizedException,
 } from '@nestjs/common';
 import { Request } from 'express';
 import { DevDataService } from '../../dev-data/dev-data.service';
+import {
+  createUnauthorizedException,
+  requireBearerToken,
+} from '../auth/request-auth';
 import { AuthSession } from '../interfaces/auth-session.interface';
 
 type RequestWithAuthSession = Request & {
   authSession?: AuthSession;
 };
+
+function isValidAuthSession(session: AuthSession): session is AuthSession {
+  return (
+    typeof session.token === 'string' &&
+    session.token.length > 0 &&
+    typeof session.parentId === 'string' &&
+    session.parentId.length > 0 &&
+    typeof session.familyId === 'string' &&
+    session.familyId.length > 0 &&
+    typeof session.phone === 'string' &&
+    session.phone.length > 0 &&
+    (session.role === 'OWNER' || session.role === 'MEMBER')
+  );
+}
 
 @Injectable()
 export class DevAuthGuard implements CanActivate {
@@ -20,26 +37,14 @@ export class DevAuthGuard implements CanActivate {
     const request = context
       .switchToHttp()
       .getRequest<RequestWithAuthSession>();
-    const authHeader = request.headers.authorization;
-    const token = authHeader?.startsWith('Bearer ')
-      ? authHeader.slice('Bearer '.length)
-      : '';
-
-    if (!token) {
-      throw new UnauthorizedException({
-        code: 'UNAUTHORIZED',
-        message: 'missing bearer token',
-        details: {},
-      });
-    }
+    const token = requireBearerToken(request.headers.authorization);
 
     const session = this.devDataService.getSession(token);
     if (!session) {
-      throw new UnauthorizedException({
-        code: 'UNAUTHORIZED',
-        message: 'invalid session token',
-        details: {},
-      });
+      throw createUnauthorizedException('invalid session token');
+    }
+    if (!isValidAuthSession(session)) {
+      throw createUnauthorizedException('invalid session token');
     }
 
     request.authSession = session;

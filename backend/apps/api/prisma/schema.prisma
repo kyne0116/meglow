@@ -12,6 +12,13 @@ enum ParentRole {
   MEMBER
 }
 
+enum AdminRole {
+  SUPER_ADMIN
+  CONTENT_EDITOR
+  CONTENT_PUBLISHER
+  VIEWER
+}
+
 enum Gender {
   MALE
   FEMALE
@@ -26,6 +33,60 @@ enum K12Stage {
 
 enum SubjectType {
   ENGLISH
+  CHINESE
+  MATH
+}
+
+enum SubjectCode {
+  ENGLISH
+  CHINESE
+  MATH
+}
+
+enum SemesterType {
+  FIRST_TERM
+  SECOND_TERM
+  FULL_VOLUME
+  ELECTIVE
+}
+
+enum TextbookNodeType {
+  VOLUME
+  UNIT
+  LESSON
+  SECTION
+  TOPIC
+  SPECIAL
+}
+
+enum ContentItemType {
+  WORD
+  CHARACTER
+  WORD_GROUP
+  TEXT
+  PARAGRAPH
+  CONCEPT
+  FORMULA
+  EXAMPLE
+  EXERCISE
+  READING_QUESTION
+  SPEAKING_PROMPT
+  AUDIO_MATERIAL
+}
+
+enum BindingStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum ReviewStatus {
+  DRAFT
+  REVIEWING
+  APPROVED
+  REJECTED
+  PUBLISHED
+  OFFLINE
 }
 
 enum PushStatus {
@@ -60,6 +121,7 @@ enum LearningItemType {
   WORD_MEANING
   WORD_SPELLING
   WORD_PRONUNCIATION
+  CONTENT_REVIEW
 }
 
 model Parent {
@@ -71,6 +133,37 @@ model Parent {
   pushActions LearningPushActionLog[] @relation("PushActionOperator")
   createdAt   DateTime                @default(now())
   updatedAt   DateTime                @updatedAt
+}
+
+model AdminUser {
+  id           String          @id @default(uuid()) @db.Uuid
+  username     String          @unique @db.VarChar(50)
+  displayName  String          @db.VarChar(80)
+  passwordHash String          @db.VarChar(255)
+  role         AdminRole
+  isEnabled    Boolean         @default(true)
+  lastLoginAt  DateTime?
+  auditLogs    AdminAuditLog[]
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  @@index([role, isEnabled])
+}
+
+model AdminAuditLog {
+  id           String    @id @default(uuid()) @db.Uuid
+  adminUserId  String    @db.Uuid
+  action       String    @db.VarChar(80)
+  targetType   String    @db.VarChar(80)
+  targetId     String?   @db.Uuid
+  summary      String    @db.VarChar(255)
+  payloadJson  Json?
+  adminUser    AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+  createdAt    DateTime  @default(now())
+
+  @@index([adminUserId, createdAt])
+  @@index([action, createdAt])
+  @@index([targetType, createdAt])
 }
 
 model Family {
@@ -140,6 +233,7 @@ model Child {
   pushes           LearningPush[]
   tasks            LearningTask[]
   sessions         LearningSession[]
+  subjectBindings  ChildSubjectBinding[]
   createdAt        DateTime               @default(now())
   updatedAt        DateTime               @updatedAt
 
@@ -198,6 +292,7 @@ model EnglishWord {
   k12Stage        K12Stage
   wordProgresses  ChildWordProgress[]
   sessionItems    LearningSessionItem[]
+  contentItemMaps EnglishWordContentItemMap[]
   createdAt       DateTime              @default(now())
   updatedAt       DateTime              @updatedAt
 
@@ -235,6 +330,8 @@ model LearningPush {
   status          PushStatus
   scheduledAt     DateTime
   contentJson     Json
+  textbookContextJson        Json?
+  contentVersionSnapshotJson Json?
   createdBy       String                  @db.VarChar(50)
   createdAt       DateTime                @default(now())
   updatedAt       DateTime                @updatedAt
@@ -271,6 +368,8 @@ model LearningTask {
   deliveredAt DateTime?
   completedAt DateTime?
   contentJson Json
+  textbookContextJson        Json?
+  contentVersionSnapshotJson Json?
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
   push        LearningPush      @relation(fields: [pushId], references: [id], onDelete: Cascade)
@@ -310,6 +409,7 @@ model LearningSessionItem {
   correctAnswerJson     Json
   childAnswerJson       Json?
   resultJson            Json?
+  contentVersionSnapshotJson Json?
   createdAt             DateTime              @default(now())
   updatedAt             DateTime              @updatedAt
   session               LearningSession       @relation(fields: [sessionId], references: [id], onDelete: Cascade)
@@ -334,4 +434,293 @@ model PronunciationAttempt {
 
   @@index([sessionItemId])
   @@index([childId, createdAt])
+}
+
+model Subject {
+  id              String                @id @default(uuid()) @db.Uuid
+  code            SubjectCode           @unique
+  name            String                @db.VarChar(50)
+  description     String?               @db.VarChar(255)
+  isEnabled       Boolean               @default(true)
+  sortOrder       Int                   @default(0)
+  editions        TextbookEdition[]
+  knowledgePoints KnowledgePoint[]
+  contentItems    ContentItem[]
+  childBindings   ChildSubjectBinding[]
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+}
+
+model Publisher {
+  id        String            @id @default(uuid()) @db.Uuid
+  code      String            @unique @db.VarChar(50)
+  name      String            @db.VarChar(100)
+  shortName String?           @db.VarChar(50)
+  region    String?           @db.VarChar(50)
+  isEnabled Boolean           @default(true)
+  editions  TextbookEdition[]
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+}
+
+model TextbookEdition {
+  id             String                @id @default(uuid()) @db.Uuid
+  subjectId      String                @db.Uuid
+  publisherId    String                @db.Uuid
+  code           String                @db.VarChar(80)
+  displayName    String                @db.VarChar(100)
+  curriculumYear Int?
+  regionScope    String?               @db.VarChar(100)
+  isEnabled      Boolean               @default(true)
+  validFrom      DateTime?
+  validTo        DateTime?
+  subject        Subject               @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  publisher      Publisher             @relation(fields: [publisherId], references: [id], onDelete: Restrict)
+  volumes        TextbookVolume[]
+  childBindings  ChildSubjectBinding[]
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+
+  @@unique([subjectId, code])
+  @@index([subjectId, isEnabled])
+  @@index([publisherId])
+}
+
+model TextbookVolume {
+  id            String               @id @default(uuid()) @db.Uuid
+  editionId     String               @db.Uuid
+  grade         Int
+  semester      SemesterType
+  volumeLabel   String               @db.VarChar(50)
+  k12Stage      K12Stage
+  sortOrder     Int                  @default(0)
+  reviewStatus  ReviewStatus         @default(DRAFT)
+  version       Int                  @default(1)
+  publishedAt   DateTime?
+  edition       TextbookEdition      @relation(fields: [editionId], references: [id], onDelete: Cascade)
+  nodes         TextbookNode[]
+  childBindings ChildSubjectBinding[]
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  @@unique([editionId, grade, semester, version])
+  @@index([editionId, grade, semester])
+  @@index([k12Stage])
+}
+
+model TextbookNode {
+  id                         String                      @id @default(uuid()) @db.Uuid
+  volumeId                   String                      @db.Uuid
+  parentId                   String?                     @db.Uuid
+  nodeType                   TextbookNodeType
+  nodeCode                   String?                     @db.VarChar(50)
+  title                      String                      @db.VarChar(255)
+  description                String?                     @db.VarChar(500)
+  depth                      Int
+  sortOrder                  Int                         @default(0)
+  reviewStatus               ReviewStatus                @default(DRAFT)
+  version                    Int                         @default(1)
+  isLeaf                     Boolean                     @default(false)
+  metadataJson               Json?
+  volume                     TextbookVolume              @relation(fields: [volumeId], references: [id], onDelete: Cascade)
+  parent                     TextbookNode?               @relation("TextbookNodeTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children                   TextbookNode[]              @relation("TextbookNodeTree")
+  knowledgePointLinks        TextbookNodeKnowledgePoint[]
+  contentItemLinks           TextbookNodeContentItem[]
+  childBindingsAsCurrent     ChildSubjectBinding[]       @relation("CurrentTextbookNode")
+  progressesAsCurrent        ChildSubjectProgress[]      @relation("CurrentProgressNode")
+  progressesAsLastCompleted  ChildSubjectProgress[]      @relation("LastCompletedProgressNode")
+  createdAt                  DateTime                    @default(now())
+  updatedAt                  DateTime                    @updatedAt
+
+  @@index([volumeId, parentId, sortOrder])
+  @@index([volumeId, nodeType])
+}
+
+model KnowledgePoint {
+  id                  String                     @id @default(uuid()) @db.Uuid
+  subjectId           String                     @db.Uuid
+  code                String                     @db.VarChar(80)
+  name                String                     @db.VarChar(120)
+  description         String?                    @db.VarChar(500)
+  difficultyLevel     Int                        @default(1)
+  k12Stage            K12Stage?
+  tagsJson            Json?
+  isEnabled           Boolean                    @default(true)
+  subject             Subject                    @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  textbookNodeLinks   TextbookNodeKnowledgePoint[]
+  contentItemLinks    ContentItemKnowledgePoint[]
+  createdAt           DateTime                   @default(now())
+  updatedAt           DateTime                   @updatedAt
+
+  @@unique([subjectId, code])
+  @@index([subjectId, difficultyLevel])
+  @@index([k12Stage])
+}
+
+model ContentItem {
+  id                   String                    @id @default(uuid()) @db.Uuid
+  subjectId            String                    @db.Uuid
+  itemType             ContentItemType
+  canonicalKey         String?                   @db.VarChar(120)
+  title                String                    @db.VarChar(255)
+  summary              String?                   @db.VarChar(500)
+  difficultyLevel      Int                       @default(1)
+  k12Stage             K12Stage?
+  isReusable           Boolean                   @default(true)
+  currentVersion       Int                       @default(1)
+  currentVersionId     String?                   @db.Uuid
+  subject              Subject                   @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  versions             ContentItemVersion[]
+  assets               ContentAsset[]
+  textbookNodeLinks    TextbookNodeContentItem[]
+  knowledgePointLinks  ContentItemKnowledgePoint[]
+  englishWordMaps      EnglishWordContentItemMap[]
+  createdAt            DateTime                  @default(now())
+  updatedAt            DateTime                  @updatedAt
+
+  @@index([subjectId, itemType])
+  @@index([canonicalKey])
+  @@index([k12Stage, difficultyLevel])
+}
+
+model ContentItemVersion {
+  id                String                   @id @default(uuid()) @db.Uuid
+  contentItemId     String                   @db.Uuid
+  version           Int
+  reviewStatus      ReviewStatus             @default(DRAFT)
+  title             String                   @db.VarChar(255)
+  payloadJson       Json
+  changeSummary     String?                  @db.VarChar(500)
+  createdBy         String?                  @db.VarChar(50)
+  approvedBy        String?                  @db.VarChar(50)
+  approvedAt        DateTime?
+  publishedAt       DateTime?
+  contentItem       ContentItem              @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+  textbookNodeLinks TextbookNodeContentItem[]
+  assets            ContentAsset[]
+  createdAt         DateTime                 @default(now())
+  updatedAt         DateTime                 @updatedAt
+
+  @@unique([contentItemId, version])
+  @@index([contentItemId, reviewStatus])
+}
+
+model ContentAsset {
+  id               String              @id @default(uuid()) @db.Uuid
+  contentItemId    String              @db.Uuid
+  contentVersionId String?             @db.Uuid
+  assetType        String              @db.VarChar(50)
+  uri              String              @db.VarChar(500)
+  format           String?             @db.VarChar(50)
+  metadataJson     Json?
+  sortOrder        Int                 @default(0)
+  contentItem      ContentItem         @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+  contentVersion   ContentItemVersion? @relation(fields: [contentVersionId], references: [id], onDelete: SetNull)
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  @@index([contentItemId, sortOrder])
+  @@index([contentVersionId])
+}
+
+model TextbookNodeKnowledgePoint {
+  id               String         @id @default(uuid()) @db.Uuid
+  textbookNodeId   String         @db.Uuid
+  knowledgePointId String         @db.Uuid
+  relationType     String?        @db.VarChar(50)
+  sortOrder        Int            @default(0)
+  textbookNode     TextbookNode   @relation(fields: [textbookNodeId], references: [id], onDelete: Cascade)
+  knowledgePoint   KnowledgePoint @relation(fields: [knowledgePointId], references: [id], onDelete: Cascade)
+  createdAt        DateTime       @default(now())
+
+  @@unique([textbookNodeId, knowledgePointId])
+  @@index([knowledgePointId])
+}
+
+model TextbookNodeContentItem {
+  id               String              @id @default(uuid()) @db.Uuid
+  textbookNodeId   String              @db.Uuid
+  contentItemId    String              @db.Uuid
+  contentVersionId String?             @db.Uuid
+  isPrimary        Boolean             @default(false)
+  sortOrder        Int                 @default(0)
+  metadataJson     Json?
+  textbookNode     TextbookNode        @relation(fields: [textbookNodeId], references: [id], onDelete: Cascade)
+  contentItem      ContentItem         @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+  contentVersion   ContentItemVersion? @relation(fields: [contentVersionId], references: [id], onDelete: SetNull)
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  @@unique([textbookNodeId, contentItemId])
+  @@index([contentItemId])
+  @@index([contentVersionId])
+}
+
+model ContentItemKnowledgePoint {
+  id               String         @id @default(uuid()) @db.Uuid
+  contentItemId    String         @db.Uuid
+  knowledgePointId String         @db.Uuid
+  relationType     String?        @db.VarChar(50)
+  contentItem      ContentItem    @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+  knowledgePoint   KnowledgePoint @relation(fields: [knowledgePointId], references: [id], onDelete: Cascade)
+  createdAt        DateTime       @default(now())
+
+  @@unique([contentItemId, knowledgePointId])
+  @@index([knowledgePointId])
+}
+
+model ChildSubjectBinding {
+  id            String               @id @default(uuid()) @db.Uuid
+  childId       String               @db.Uuid
+  subjectId     String               @db.Uuid
+  editionId     String               @db.Uuid
+  volumeId      String               @db.Uuid
+  currentNodeId String?              @db.Uuid
+  grade         Int
+  semester      SemesterType
+  k12Stage      K12Stage
+  status        BindingStatus        @default(ACTIVE)
+  effectiveFrom DateTime             @default(now())
+  effectiveTo   DateTime?
+  metadataJson  Json?
+  child         Child                @relation(fields: [childId], references: [id], onDelete: Cascade)
+  subject       Subject              @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  edition       TextbookEdition      @relation(fields: [editionId], references: [id], onDelete: Restrict)
+  volume        TextbookVolume       @relation(fields: [volumeId], references: [id], onDelete: Restrict)
+  currentNode   TextbookNode?        @relation("CurrentTextbookNode", fields: [currentNodeId], references: [id], onDelete: SetNull)
+  progress      ChildSubjectProgress?
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  @@index([childId, subjectId, status])
+  @@index([editionId, volumeId])
+}
+
+model ChildSubjectProgress {
+  id                    String              @id @default(uuid()) @db.Uuid
+  childSubjectBindingId String              @unique @db.Uuid
+  currentNodeId         String?             @db.Uuid
+  lastCompletedNodeId   String?             @db.Uuid
+  completedNodeCount    Int                 @default(0)
+  masteryJson           Json?
+  lastStudiedAt         DateTime?
+  childSubjectBinding   ChildSubjectBinding @relation(fields: [childSubjectBindingId], references: [id], onDelete: Cascade)
+  currentNode           TextbookNode?       @relation("CurrentProgressNode", fields: [currentNodeId], references: [id], onDelete: SetNull)
+  lastCompletedNode     TextbookNode?       @relation("LastCompletedProgressNode", fields: [lastCompletedNodeId], references: [id], onDelete: SetNull)
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  @@index([currentNodeId])
+  @@index([lastCompletedNodeId])
+}
+
+model EnglishWordContentItemMap {
+  id            String      @id @default(uuid()) @db.Uuid
+  englishWordId String      @unique @db.Uuid
+  contentItemId String      @unique @db.Uuid
+  englishWord   EnglishWord @relation(fields: [englishWordId], references: [id], onDelete: Cascade)
+  contentItem   ContentItem @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
 }

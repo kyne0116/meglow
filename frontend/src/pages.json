@@ -13,6 +13,12 @@
       }
     },
     {
+      "path": "pages/parent/children/create/index",
+      "style": {
+        "navigationBarTitleText": "创建孩子"
+      }
+    },
+    {
       "path": "pages/parent/approval/index",
       "style": {
         "navigationBarTitleText": "待审批推送"

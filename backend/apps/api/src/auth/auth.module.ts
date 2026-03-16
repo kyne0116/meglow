@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
-import { ACCESS_TOKEN_EXPIRES_IN, DEFAULT_JWT_SECRET } from './auth.constants';
+import { getRuntimeJwtSecret } from '../config/runtime-config';
+import { ACCESS_TOKEN_EXPIRES_IN } from './auth.constants';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
@@ -9,7 +10,7 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
   imports: [
     JwtModule.registerAsync({
       useFactory: async () => ({
-        secret: process.env.JWT_SECRET || DEFAULT_JWT_SECRET,
+        secret: getRuntimeJwtSecret(),
         signOptions: {
           expiresIn: ACCESS_TOKEN_EXPIRES_IN,
         },

@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import {
   ChildWordProgress,
+  K12Stage,
   LearningItemType,
   LearningSessionItem,
   Prisma,
@@ -26,7 +27,11 @@ type SessionProgress = {
 
 type SessionItemRecord = {
   id: string;
-  itemType: 'WORD_MEANING' | 'WORD_SPELLING';
+  itemType:
+    | 'WORD_MEANING'
+    | 'WORD_SPELLING'
+    | 'WORD_PRONUNCIATION'
+    | 'CONTENT_REVIEW';
   sequence: number;
   prompt: Record<string, unknown>;
   result?: Record<string, unknown> | null;
@@ -36,12 +41,34 @@ export interface LearningSessionRecord {
   id: string;
   taskId: string;
   childId: string;
-  subject: 'ENGLISH';
+  subject: 'ENGLISH' | 'CHINESE' | 'MATH';
   status: 'IN_PROGRESS' | 'COMPLETED' | 'ABANDONED';
   startedAt: string;
   finishedAt?: string | null;
   items: SessionItemRecord[];
 }
+
+type TaskWithSessionContext = {
+  id: string;
+  childId: string;
+  status: TaskStatus;
+  contentJson: Prisma.JsonValue;
+  textbookContextJson: Prisma.JsonValue | null;
+  contentVersionSnapshotJson: Prisma.JsonValue | null;
+  child: {
+    k12Stage: K12Stage;
+  };
+  sessions: Array<{
+    id: string;
+    taskId: string;
+    childId: string;
+    subject: SubjectType;
+    status: SessionStatus;
+    startedAt: Date;
+    finishedAt: Date | null;
+    items: LearningSessionItem[];
+  }>;
+};
 
 @Injectable()
 export class LearningService {
@@ -104,82 +131,19 @@ export class LearningService {
     }
 
     const taskContent = this.asObject(task.contentJson);
-    const words = await this.contentService.resolveTaskWords(
-      task.childId,
-      this.readWordReferences(taskContent),
-      this.readWordCount(taskContent),
-    );
+    if (this.isTextbookContentTask(taskContent)) {
+      return this.createTextbookSession(task as TaskWithSessionContext);
+    }
 
-    const createdSession = await this.prismaService.$transaction(async (prisma) => {
-      const session = await prisma.learningSession.create({
-        data: {
-          taskId: task.id,
-          childId: task.childId,
-          subject: SubjectType.ENGLISH,
-          status: SessionStatus.IN_PROGRESS,
-        },
+    if (!this.isEnglishWordTask(taskContent)) {
+      throw new ConflictException({
+        code: 'CONFLICT',
+        message: 'task type is not supported for learning session',
+        details: {},
       });
+    }
 
-      let sequence = 1;
-      for (const word of words) {
-        const options = await this.contentService.getMeaningOptions(
-          word.id,
-          task.child.k12Stage,
-        );
-
-        await prisma.learningSessionItem.create({
-          data: {
-            sessionId: session.id,
-            wordId: word.id,
-            itemType: LearningItemType.WORD_MEANING,
-            sequence: sequence++,
-            promptJson: {
-              word: word.value,
-              phonetic: word.phonetic,
-              options,
-              kind: word.kind,
-            },
-            correctAnswerJson: {
-              selected: word.meaningZh,
-            },
-          },
-        });
-
-        await prisma.learningSessionItem.create({
-          data: {
-            sessionId: session.id,
-            wordId: word.id,
-            itemType: LearningItemType.WORD_SPELLING,
-            sequence: sequence++,
-            promptJson: {
-              meaningZh: word.meaningZh,
-              phonetic: word.phonetic,
-              hint: `${word.value.slice(0, 1)}***`,
-              wordLength: word.value.length,
-              kind: word.kind,
-            },
-            correctAnswerJson: {
-              text: word.value,
-            },
-          },
-        });
-      }
-
-      return prisma.learningSession.findUniqueOrThrow({
-        where: {
-          id: session.id,
-        },
-        include: {
-          items: {
-            orderBy: {
-              sequence: 'asc',
-            },
-          },
-        },
-      });
-    });
-
-    return this.toSessionRecord(createdSession, false);
+    return this.createEnglishSession(task as TaskWithSessionContext, taskContent);
   }
 
   async getSession(
@@ -330,6 +294,13 @@ export class LearningService {
         },
       },
       include: {
+        task: {
+          select: {
+            id: true,
+            contentJson: true,
+            textbookContextJson: true,
+          },
+        },
         items: {
           orderBy: {
             sequence: 'asc',
@@ -362,6 +333,220 @@ export class LearningService {
       });
     }
 
+    const taskContent = this.asObject(session.task.contentJson);
+    if (this.isTextbookContentTask(taskContent)) {
+      return this.finishTextbookSession(session);
+    }
+
+    return this.finishEnglishSession(session);
+  }
+
+  private async createEnglishSession(
+    task: TaskWithSessionContext,
+    taskContent: Record<string, unknown>,
+  ): Promise<LearningSessionRecord> {
+    const words = await this.contentService.resolveTaskWords(
+      task.childId,
+      this.readWordReferences(taskContent),
+      this.readWordCount(taskContent),
+    );
+
+    const createdSession = await this.prismaService.$transaction(async (prisma) => {
+      const session = await prisma.learningSession.create({
+        data: {
+          taskId: task.id,
+          childId: task.childId,
+          subject: SubjectType.ENGLISH,
+          status: SessionStatus.IN_PROGRESS,
+        },
+      });
+
+      let sequence = 1;
+      for (const word of words) {
+        const options = await this.contentService.getMeaningOptions(
+          word.id,
+          task.child.k12Stage,
+        );
+
+        await prisma.learningSessionItem.create({
+          data: {
+            sessionId: session.id,
+            wordId: word.id,
+            itemType: LearningItemType.WORD_MEANING,
+            sequence: sequence++,
+            promptJson: {
+              word: word.value,
+              phonetic: word.phonetic,
+              options,
+              kind: word.kind,
+            },
+            correctAnswerJson: {
+              selected: word.meaningZh,
+            },
+          },
+        });
+
+        await prisma.learningSessionItem.create({
+          data: {
+            sessionId: session.id,
+            wordId: word.id,
+            itemType: LearningItemType.WORD_SPELLING,
+            sequence: sequence++,
+            promptJson: {
+              meaningZh: word.meaningZh,
+              phonetic: word.phonetic,
+              hint: `${word.value.slice(0, 1)}***`,
+              wordLength: word.value.length,
+              kind: word.kind,
+            },
+            correctAnswerJson: {
+              text: word.value,
+            },
+          },
+        });
+
+        await prisma.learningSessionItem.create({
+          data: {
+            sessionId: session.id,
+            wordId: word.id,
+            itemType: LearningItemType.WORD_PRONUNCIATION,
+            sequence: sequence++,
+            promptJson: {
+              word: word.value,
+              phonetic: word.phonetic,
+              exampleSentence: word.exampleSentence,
+              instruction: `请先朗读单词 ${word.value}`,
+              kind: word.kind,
+            },
+            correctAnswerJson: {
+              completed: true,
+            },
+          },
+        });
+      }
+
+      return prisma.learningSession.findUniqueOrThrow({
+        where: {
+          id: session.id,
+        },
+        include: {
+          items: {
+            orderBy: {
+              sequence: 'asc',
+            },
+          },
+        },
+      });
+    });
+
+    return this.toSessionRecord(createdSession, false);
+  }
+
+  private async createTextbookSession(
+    task: TaskWithSessionContext,
+  ): Promise<LearningSessionRecord> {
+    const taskContent = this.asObject(task.contentJson);
+    const textbookContext = this.asObject(task.textbookContextJson);
+    const snapshot = this.asObject(task.contentVersionSnapshotJson);
+    const itemRefs = this.readTextbookContentReferences(taskContent, snapshot);
+
+    if (itemRefs.length === 0) {
+      throw new ConflictException({
+        code: 'CONFLICT',
+        message: 'textbook task does not contain any content items',
+        details: {},
+      });
+    }
+
+    const versionIds = itemRefs
+      .map((item) => item.contentVersionId)
+      .filter((value): value is string => Boolean(value));
+
+    const versions = await this.prismaService.contentItemVersion.findMany({
+      where: {
+        id: {
+          in: versionIds,
+        },
+      },
+      select: {
+        id: true,
+        version: true,
+        payloadJson: true,
+      },
+    });
+    const versionsById = new Map(versions.map((item) => [item.id, item]));
+
+    const createdSession = await this.prismaService.$transaction(async (prisma) => {
+      const session = await prisma.learningSession.create({
+        data: {
+          taskId: task.id,
+          childId: task.childId,
+          subject: this.resolveSessionSubject(taskContent),
+          status: SessionStatus.IN_PROGRESS,
+        },
+      });
+
+      let sequence = 1;
+      for (const itemRef of itemRefs) {
+        const version = itemRef.contentVersionId
+          ? versionsById.get(itemRef.contentVersionId)
+          : undefined;
+        const sessionItemInputs = this.buildTextbookSessionItems({
+          taskContent,
+          textbookContext,
+          itemRef,
+          versionPayload: this.asObject(version?.payloadJson),
+          fallbackVersion: version?.version,
+        });
+
+        for (const sessionItemInput of sessionItemInputs) {
+          await prisma.learningSessionItem.create({
+            data: {
+              sessionId: session.id,
+              itemType: LearningItemType.CONTENT_REVIEW,
+              sequence: sequence++,
+              promptJson: sessionItemInput.promptJson,
+              correctAnswerJson: sessionItemInput.correctAnswerJson,
+              contentVersionSnapshotJson:
+                sessionItemInput.contentVersionSnapshotJson as Prisma.InputJsonValue,
+            },
+          });
+        }
+      }
+
+      return prisma.learningSession.findUniqueOrThrow({
+        where: {
+          id: session.id,
+        },
+        include: {
+          items: {
+            orderBy: {
+              sequence: 'asc',
+            },
+          },
+        },
+      });
+    });
+
+    return this.toSessionRecord(createdSession, false);
+  }
+
+  private async finishEnglishSession(session: {
+    id: string;
+    taskId: string;
+    childId: string;
+    items: LearningSessionItem[];
+  }): Promise<{
+    sessionId: string;
+    status: 'COMPLETED';
+    summary: {
+      totalItems: number;
+      correctItems: number;
+      accuracy: number;
+      newWordsLearned: number;
+      reviewWordsCompleted: number;
+    };
+  }> {
     const wordIds = Array.from(
       new Set(
         session.items
@@ -468,6 +653,125 @@ export class LearningService {
     };
   }
 
+  private async finishTextbookSession(session: {
+    id: string;
+    taskId: string;
+    childId: string;
+    task: {
+      textbookContextJson: Prisma.JsonValue | null;
+    };
+    items: LearningSessionItem[];
+  }): Promise<{
+    sessionId: string;
+    status: 'COMPLETED';
+    summary: {
+      totalItems: number;
+      correctItems: number;
+      accuracy: number;
+      newWordsLearned: number;
+      reviewWordsCompleted: number;
+    };
+  }> {
+    const totalItems = session.items.length;
+    const correctItems = session.items.filter(
+      (item) => this.asObject(item.resultJson).isCorrect === true,
+    ).length;
+    const accuracy = totalItems === 0 ? 0 : correctItems / totalItems;
+    const now = new Date();
+    const textbookContext = this.asObject(session.task.textbookContextJson);
+    const bindingId = this.readString(textbookContext.bindingId);
+    const nodeId = this.readString(textbookContext.nodeId);
+
+    await this.prismaService.$transaction(async (prisma) => {
+      if (bindingId) {
+        const currentProgress = await prisma.childSubjectProgress.findUnique({
+          where: {
+            childSubjectBindingId: bindingId,
+          },
+          select: {
+            id: true,
+            completedNodeCount: true,
+            lastCompletedNodeId: true,
+          },
+        });
+
+        const nextCompletedNodeCount =
+          currentProgress && nodeId && currentProgress.lastCompletedNodeId !== nodeId
+            ? currentProgress.completedNodeCount + 1
+            : currentProgress?.completedNodeCount ?? (nodeId ? 1 : 0);
+
+        await prisma.childSubjectProgress.upsert({
+          where: {
+            childSubjectBindingId: bindingId,
+          },
+          update: {
+            currentNodeId: nodeId ?? undefined,
+            lastCompletedNodeId: nodeId ?? undefined,
+            completedNodeCount: nextCompletedNodeCount,
+            lastStudiedAt: now,
+          },
+          create: {
+            childSubjectBindingId: bindingId,
+            currentNodeId: nodeId ?? null,
+            lastCompletedNodeId: nodeId ?? null,
+            completedNodeCount: nodeId ? 1 : 0,
+            lastStudiedAt: now,
+          },
+        });
+
+        if (nodeId) {
+          await prisma.childSubjectBinding.update({
+            where: {
+              id: bindingId,
+            },
+            data: {
+              currentNodeId: nodeId,
+            },
+          });
+        }
+      }
+
+      await prisma.learningSession.update({
+        where: {
+          id: session.id,
+        },
+        data: {
+          status: SessionStatus.COMPLETED,
+          finishedAt: now,
+          summaryJson: {
+            totalItems,
+            correctItems,
+            accuracy,
+            newWordsLearned: 0,
+            reviewWordsCompleted: 0,
+          },
+        },
+      });
+
+      await prisma.learningTask.update({
+        where: {
+          id: session.taskId,
+        },
+        data: {
+          status: TaskStatus.COMPLETED,
+          completedAt: now,
+        },
+      });
+    });
+
+    return {
+      sessionId: session.id,
+      status: 'COMPLETED',
+      summary: {
+        totalItems,
+        correctItems,
+        accuracy,
+        newWordsLearned: 0,
+        reviewWordsCompleted: 0,
+      },
+    };
+  }
+
   private toSessionRecord(
     session: {
       id: string;
@@ -491,7 +795,11 @@ export class LearningService {
       finishedAt: session.finishedAt?.toISOString() ?? null,
       items: session.items.map((item) => ({
         id: item.id,
-        itemType: item.itemType as 'WORD_MEANING' | 'WORD_SPELLING',
+        itemType: item.itemType as
+          | 'WORD_MEANING'
+          | 'WORD_SPELLING'
+          | 'WORD_PRONUNCIATION'
+          | 'CONTENT_REVIEW',
         sequence: item.sequence,
         prompt: this.asObject(item.promptJson),
         ...(includeResults
@@ -516,21 +824,87 @@ export class LearningService {
       return {
         isCorrect,
         score: isCorrect ? 100 : 0,
-        feedback: isCorrect ? '词义选择正确' : `正确答案是 ${expected}`,
-        guidance: isCorrect ? '继续保持当前节奏' : '下一次先抓住核心词义再选择',
-        encouragement: isCorrect ? '做得很好' : '别着急，再试下一题',
+        feedback: isCorrect ? 'meaning matched' : `expected answer is ${expected}`,
+        guidance: isCorrect ? 'continue at the same pace' : 'focus on the core meaning first',
+        encouragement: isCorrect ? 'good job' : 'try the next item carefully',
       };
     }
 
-    const submittedText = String(answer.text ?? '').trim().toLowerCase();
-    const expectedText = String(correctAnswer.text ?? '').trim().toLowerCase();
-    const isCorrect = submittedText === expectedText;
+    if (sessionItem.itemType === LearningItemType.WORD_SPELLING) {
+      const submittedText = String(answer.text ?? '').trim().toLowerCase();
+      const expectedText = String(correctAnswer.text ?? '').trim().toLowerCase();
+      const isCorrect = submittedText === expectedText;
+      return {
+        isCorrect,
+        score: isCorrect ? 100 : 0,
+        feedback: isCorrect ? 'spelling matched' : `expected spelling is ${correctAnswer.text}`,
+        guidance: isCorrect ? 'keep the spelling accuracy' : 'focus on the first letters and length',
+        encouragement: isCorrect ? 'keep going' : 'one more try will help',
+      };
+    }
+
+    if (sessionItem.itemType === LearningItemType.WORD_PRONUNCIATION) {
+      const completed = answer.completed === true;
+      return {
+        isCorrect: completed,
+        score: completed ? 100 : 0,
+        feedback: completed ? 'pronunciation practice completed' : 'please read the word aloud first',
+        guidance: completed
+          ? 'continue to the next word after reading clearly'
+          : 'read the word aloud once and then submit',
+        encouragement: completed ? 'good speaking practice' : 'try speaking the word once',
+      };
+    }
+
+    if (sessionItem.itemType === LearningItemType.CONTENT_REVIEW) {
+      const prompt = this.asObject(sessionItem.promptJson);
+      const answerMode = String(prompt.answerMode ?? 'completion');
+
+      if (answerMode === 'multiple_choice') {
+        const selected = String(answer.selected ?? '').trim();
+        const expected = String(correctAnswer.selected ?? '').trim();
+        const isCorrect = selected === expected;
+        return {
+          isCorrect,
+          score: isCorrect ? 100 : 0,
+          feedback: isCorrect ? 'choice matched' : `expected answer is ${expected}`,
+          guidance: isCorrect ? 'continue to the next item' : 'review the key clue and choose again next time',
+          encouragement: isCorrect ? 'nice work' : 'keep reviewing',
+        };
+      }
+
+      if (answerMode === 'short_answer') {
+        const text = String(answer.text ?? '').trim();
+        const isCorrect = text.length > 0;
+        return {
+          isCorrect,
+          score: isCorrect ? 80 : 0,
+          feedback: isCorrect ? 'answer submitted' : 'please provide a short answer',
+          guidance: isCorrect
+            ? 'compare the child answer with teacher review later'
+            : 'summarize the key idea in one sentence',
+          encouragement: isCorrect ? 'response recorded' : 'try writing one sentence',
+        };
+      }
+
+      const completed = answer.completed === true;
+      return {
+        isCorrect: completed,
+        score: completed ? 100 : 0,
+        feedback: completed ? 'content review completed' : 'mark the content as completed after review',
+        guidance: completed
+          ? 'continue to the next textbook item'
+          : 'finish reviewing the content before submitting',
+        encouragement: completed ? 'progress recorded' : 'keep reviewing',
+      };
+    }
+
     return {
-      isCorrect,
-      score: isCorrect ? 100 : 0,
-      feedback: isCorrect ? '拼写正确' : `标准拼写是 ${correctAnswer.text}`,
-      guidance: isCorrect ? '保持拼写准确度' : '先记住首字母和单词长度',
-      encouragement: isCorrect ? '继续前进' : '再练一次就会更稳',
+      isCorrect: false,
+      score: 0,
+      feedback: 'unsupported item type',
+      guidance: 'skip this session and contact support',
+      encouragement: 'try again later',
     };
   }
 
@@ -585,6 +959,352 @@ export class LearningService {
         id: typeof word.id === 'string' ? word.id : undefined,
         value: typeof word.value === 'string' ? word.value : undefined,
       }));
+  }
+
+  private readTextbookContentReferences(
+    taskContent: Record<string, unknown>,
+    snapshot: Record<string, unknown>,
+  ): Array<{
+    contentItemId?: string;
+    contentVersionId?: string;
+    title?: string;
+    itemType?: string;
+    version?: number;
+  }> {
+    const itemsSource = Array.isArray(snapshot.items)
+      ? snapshot.items
+      : Array.isArray(taskContent.contentItems)
+        ? taskContent.contentItems
+        : [];
+
+    return itemsSource
+      .filter(
+        (item): item is Record<string, unknown> =>
+          typeof item === 'object' && item !== null && !Array.isArray(item),
+      )
+      .map((item) => ({
+        contentItemId: this.readString(item.contentItemId),
+        contentVersionId: this.readString(item.contentVersionId),
+        title: this.readString(item.title),
+        itemType: this.readString(item.itemType),
+        version: typeof item.version === 'number' ? item.version : undefined,
+      }))
+      .filter((item) => Boolean(item.contentItemId));
+  }
+
+  private buildTextbookSessionItems(input: {
+    taskContent: Record<string, unknown>;
+    textbookContext: Record<string, unknown>;
+    itemRef: {
+      contentItemId?: string;
+      contentVersionId?: string;
+      title?: string;
+      itemType?: string;
+      version?: number;
+    };
+    versionPayload: Record<string, unknown>;
+    fallbackVersion?: number;
+  }): Array<{
+    promptJson: Prisma.InputJsonValue;
+    correctAnswerJson: Prisma.InputJsonValue;
+    contentVersionSnapshotJson: Record<string, unknown>;
+  }> {
+    const commonPrompt = {
+      mode: 'textbook_content_review',
+      subjectCode: input.textbookContext.subjectCode ?? input.taskContent.subjectCode ?? null,
+      subjectName: input.textbookContext.subjectName ?? input.taskContent.subjectName ?? null,
+      nodeId: input.textbookContext.nodeId ?? input.taskContent.nodeId ?? null,
+      nodeTitle: input.textbookContext.nodeTitle ?? input.taskContent.nodeTitle ?? null,
+      contentItemId: input.itemRef.contentItemId,
+      contentVersionId: input.itemRef.contentVersionId,
+      title: input.itemRef.title,
+      itemType: input.itemRef.itemType,
+      version: input.itemRef.version ?? input.fallbackVersion ?? null,
+    };
+
+    const commonSnapshot = {
+      contentItemId: input.itemRef.contentItemId,
+      contentVersionId: input.itemRef.contentVersionId,
+      title: input.itemRef.title,
+      itemType: input.itemRef.itemType,
+      version: input.itemRef.version ?? input.fallbackVersion ?? null,
+    };
+
+    if (input.itemRef.itemType === 'TEXT') {
+      const blocks = this.asArrayOfObjects(input.versionPayload.blocks);
+      const paragraphCount = blocks.length;
+      const paragraphCountOptions = this.buildNumberOptions(paragraphCount);
+      const builtItems: Array<{
+        promptJson: Prisma.InputJsonValue;
+        correctAnswerJson: Prisma.InputJsonValue;
+        contentVersionSnapshotJson: Record<string, unknown>;
+      }> = [];
+
+      if (paragraphCount > 0) {
+        builtItems.push({
+          promptJson: {
+            ...commonPrompt,
+            answerMode: 'multiple_choice',
+            questionType: 'paragraph_count',
+            prompt: `《${input.itemRef.title ?? '课文'}》一共有几段内容？`,
+            options: paragraphCountOptions,
+          } as Prisma.InputJsonValue,
+          correctAnswerJson: {
+            selected: String(paragraphCount),
+          } as Prisma.InputJsonValue,
+          contentVersionSnapshotJson: {
+            ...commonSnapshot,
+            questionType: 'paragraph_count',
+          },
+        });
+      }
+
+      builtItems.push({
+        promptJson: {
+          ...commonPrompt,
+          answerMode: 'completion',
+          questionType: 'reading_completion',
+          prompt: `朗读并完成《${input.itemRef.title ?? '课文'}》学习`,
+          payload: input.versionPayload,
+        } as Prisma.InputJsonValue,
+        correctAnswerJson: {
+          completed: true,
+        } as Prisma.InputJsonValue,
+        contentVersionSnapshotJson: {
+          ...commonSnapshot,
+          questionType: 'reading_completion',
+        },
+      });
+
+      return builtItems;
+    }
+
+    if (input.itemRef.itemType === 'CHARACTER') {
+      const characters = this.asArrayOfObjects(input.versionPayload.characters).slice(0, 3);
+      const builtItems: Array<{
+        promptJson: Prisma.InputJsonValue;
+        correctAnswerJson: Prisma.InputJsonValue;
+        contentVersionSnapshotJson: Record<string, unknown>;
+      }> = [];
+      const fallbackRadicals = ['日', '讠', '穴', '木', '口', '氵'];
+      const fallbackStructures = ['左右', '上下', '独体', '半包围'];
+
+      for (const [index, character] of characters.entries()) {
+        const value = this.readString(character.value);
+        const radical = this.readString(character.radical);
+        const structure = this.readString(character.structure);
+        if (!value) {
+          continue;
+        }
+
+        if (radical) {
+          builtItems.push({
+            promptJson: {
+              ...commonPrompt,
+              answerMode: 'multiple_choice',
+              questionType: 'character_radical',
+              prompt: `“${value}”的偏旁是什么？`,
+              options: this.buildChoiceOptions(
+                radical,
+                characters
+                  .map((item) => this.readString(item.radical))
+                  .filter((item): item is string => Boolean(item)),
+                fallbackRadicals,
+              ),
+              character: value,
+            } as Prisma.InputJsonValue,
+            correctAnswerJson: {
+              selected: radical,
+            } as Prisma.InputJsonValue,
+            contentVersionSnapshotJson: {
+              ...commonSnapshot,
+              questionType: 'character_radical',
+              character: value,
+              questionIndex: index + 1,
+            },
+          });
+        }
+
+        if (structure) {
+          builtItems.push({
+            promptJson: {
+              ...commonPrompt,
+              answerMode: 'multiple_choice',
+              questionType: 'character_structure',
+              prompt: `“${value}”是什么结构？`,
+              options: this.buildChoiceOptions(
+                structure,
+                characters
+                  .map((item) => this.readString(item.structure))
+                  .filter((item): item is string => Boolean(item)),
+                fallbackStructures,
+              ),
+              character: value,
+            } as Prisma.InputJsonValue,
+            correctAnswerJson: {
+              selected: structure,
+            } as Prisma.InputJsonValue,
+            contentVersionSnapshotJson: {
+              ...commonSnapshot,
+              questionType: 'character_structure',
+              character: value,
+              questionIndex: index + 1,
+            },
+          });
+        }
+      }
+
+      if (builtItems.length > 0) {
+        return builtItems;
+      }
+    }
+
+    if (input.itemRef.itemType === 'EXERCISE') {
+      const questions = this.asArrayOfObjects(input.versionPayload.questions);
+      const tasks = this.asArrayOfObjects(input.versionPayload.tasks);
+      const builtItems: Array<{
+        promptJson: Prisma.InputJsonValue;
+        correctAnswerJson: Prisma.InputJsonValue;
+        contentVersionSnapshotJson: Record<string, unknown>;
+      }> = [];
+
+      for (const [index, question] of questions.entries()) {
+        const questionType = this.readString(question.type) ?? 'short_answer';
+        if (questionType === 'multiple_choice') {
+          builtItems.push({
+            promptJson: {
+              ...commonPrompt,
+              answerMode: 'multiple_choice',
+              questionType,
+              prompt: this.readString(question.prompt) ?? input.itemRef.title ?? 'question',
+              options: Array.isArray(question.options) ? question.options : [],
+              questionIndex: index + 1,
+            } as Prisma.InputJsonValue,
+            correctAnswerJson: {
+              selected: this.readString(question.answer) ?? '',
+            } as Prisma.InputJsonValue,
+            contentVersionSnapshotJson: {
+              ...commonSnapshot,
+              questionType,
+              questionIndex: index + 1,
+            },
+          });
+          continue;
+        }
+
+        builtItems.push({
+          promptJson: {
+            ...commonPrompt,
+            answerMode: 'short_answer',
+            questionType,
+            prompt: this.readString(question.prompt) ?? input.itemRef.title ?? 'question',
+            questionIndex: index + 1,
+          } as Prisma.InputJsonValue,
+          correctAnswerJson: {
+            requiresText: true,
+          } as Prisma.InputJsonValue,
+          contentVersionSnapshotJson: {
+            ...commonSnapshot,
+            questionType,
+            questionIndex: index + 1,
+          },
+        });
+      }
+
+      for (const [index, task] of tasks.entries()) {
+        const taskType = this.readString(task.type) ?? 'task';
+        builtItems.push({
+          promptJson: {
+            ...commonPrompt,
+            answerMode: 'completion',
+            questionType: taskType,
+            prompt: this.readString(task.prompt) ?? input.itemRef.title ?? 'task',
+            taskIndex: index + 1,
+          } as Prisma.InputJsonValue,
+          correctAnswerJson: {
+            completed: true,
+          } as Prisma.InputJsonValue,
+          contentVersionSnapshotJson: {
+            ...commonSnapshot,
+            questionType: taskType,
+            taskIndex: index + 1,
+          },
+        });
+      }
+
+      if (builtItems.length > 0) {
+        return builtItems;
+      }
+    }
+
+    return [
+      {
+        promptJson: {
+          ...commonPrompt,
+          answerMode: 'completion',
+          payload: input.versionPayload,
+        } as Prisma.InputJsonValue,
+        correctAnswerJson: {
+          completed: true,
+        } as Prisma.InputJsonValue,
+        contentVersionSnapshotJson: commonSnapshot,
+      },
+    ];
+  }
+
+  private resolveSessionSubject(taskContent: Record<string, unknown>): SubjectType {
+    const subjectCode = String(taskContent.subjectCode ?? '').toUpperCase();
+    if (subjectCode === SubjectType.CHINESE) {
+      return SubjectType.CHINESE;
+    }
+    if (subjectCode === SubjectType.MATH) {
+      return SubjectType.MATH;
+    }
+    return SubjectType.ENGLISH;
+  }
+
+  private isEnglishWordTask(taskContent: Record<string, unknown>): boolean {
+    const mode = String(taskContent.mode ?? '');
+    return mode === 'word_learning' || mode === 'word_review';
+  }
+
+  private isTextbookContentTask(taskContent: Record<string, unknown>): boolean {
+    return String(taskContent.mode ?? '') === 'textbook_content_review';
+  }
+
+  private readString(value: unknown): string | undefined {
+    return typeof value === 'string' && value.trim().length > 0 ? value : undefined;
+  }
+
+  private asArrayOfObjects(value: unknown): Array<Record<string, unknown>> {
+    if (!Array.isArray(value)) {
+      return [];
+    }
+
+    return value.filter(
+      (item): item is Record<string, unknown> =>
+        typeof item === 'object' && item !== null && !Array.isArray(item),
+    );
+  }
+
+  private buildChoiceOptions(
+    correct: string,
+    currentPool: string[],
+    fallbackPool: string[],
+  ): string[] {
+    const pool = [correct, ...currentPool, ...fallbackPool]
+      .filter((item, index, array) => item.trim().length > 0 && array.indexOf(item) === index)
+      .slice(0, 6);
+
+    const distractors = pool.filter((item) => item !== correct).slice(0, 3);
+    return [correct, ...distractors];
+  }
+
+  private buildNumberOptions(answer: number): string[] {
+    const candidates = [answer, Math.max(1, answer - 1), answer + 1, answer + 2];
+    return candidates
+      .filter((item, index, array) => array.indexOf(item) === index)
+      .map((item) => String(item));
   }
 
   private asObject(value: unknown): Record<string, any> {
