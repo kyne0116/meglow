@@ -13,6 +13,16 @@ test("getLearningItemTypeLabel falls back to raw item type", () => {
   assert.equal(getLearningItemTypeLabel("UNKNOWN_TYPE"), "UNKNOWN_TYPE");
 });
 
-test("buildPronunciationAnswer returns completed payload", () => {
-  assert.deepEqual(buildPronunciationAnswer(), { completed: true });
+test("buildPronunciationAnswer returns completed payload with self rating", () => {
+  assert.deepEqual(buildPronunciationAnswer("GOOD"), {
+    completed: true,
+    selfRating: "GOOD"
+  });
+});
+
+test("buildPronunciationAnswer defaults to ok self rating", () => {
+  assert.deepEqual(buildPronunciationAnswer(), {
+    completed: true,
+    selfRating: "OK"
+  });
 });

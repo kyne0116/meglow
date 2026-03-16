@@ -845,6 +845,40 @@ export class LearningService {
 
     if (sessionItem.itemType === LearningItemType.WORD_PRONUNCIATION) {
       const completed = answer.completed === true;
+      const selfRating = String(answer.selfRating ?? '')
+        .trim()
+        .toUpperCase();
+
+      if (completed && selfRating === 'GOOD') {
+        return {
+          isCorrect: true,
+          score: 100,
+          feedback: 'pronunciation felt smooth and clear',
+          guidance: 'keep the pace steady and move to the next word',
+          encouragement: 'excellent speaking practice',
+        };
+      }
+
+      if (completed && selfRating === 'OK') {
+        return {
+          isCorrect: true,
+          score: 80,
+          feedback: 'the pronunciation was mostly right',
+          guidance: 'read it once more with a steady rhythm, then continue',
+          encouragement: 'good job speaking it out loud',
+        };
+      }
+
+      if (completed && selfRating === 'NEEDS_PRACTICE') {
+        return {
+          isCorrect: false,
+          score: 60,
+          feedback: 'the word still needs another careful read',
+          guidance: 'slow down, follow the phonetic hint, and read it aloud again',
+          encouragement: 'one more round will make it smoother',
+        };
+      }
+
       return {
         isCorrect: completed,
         score: completed ? 100 : 0,

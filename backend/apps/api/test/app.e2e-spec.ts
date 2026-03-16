@@ -871,7 +871,10 @@ describe('Meglow business flow (e2e)', () => {
                 ([, meaningZh]) => meaningZh === item.prompt.meaningZh,
               )?.[0],
             }
-            : { completed: true };
+            : {
+              completed: true,
+              selfRating: 'GOOD',
+            };
 
       const answerResponse = await request(app.getHttpServer())
         .post(`/api/learning/sessions/${sessionId}/answer`)
@@ -881,6 +884,14 @@ describe('Meglow business flow (e2e)', () => {
           answer,
         })
         .expect(201);
+
+      if (item.itemType === 'WORD_PRONUNCIATION') {
+        expect(answerResponse.body.isCorrect).toBe(true);
+        expect(answerResponse.body.score).toBe(100);
+        expect(answerResponse.body.feedback).toBe(
+          'pronunciation felt smooth and clear',
+        );
+      }
 
       expect(answerResponse.body.isCorrect).toBe(true);
     }

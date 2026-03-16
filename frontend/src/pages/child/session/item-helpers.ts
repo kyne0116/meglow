@@ -1,3 +1,5 @@
+export type PronunciationSelfRating = "NEEDS_PRACTICE" | "OK" | "GOOD";
+
 export function getLearningItemTypeLabel(itemType: string): string {
   if (itemType === "WORD_MEANING") {
     return "词义题";
@@ -11,6 +13,11 @@ export function getLearningItemTypeLabel(itemType: string): string {
   return itemType;
 }
 
-export function buildPronunciationAnswer(): { completed: true } {
-  return { completed: true };
+export function buildPronunciationAnswer(
+  selfRating: PronunciationSelfRating = "OK"
+): { completed: true; selfRating: PronunciationSelfRating } {
+  return {
+    completed: true,
+    selfRating
+  };
 }

@@ -49,7 +49,15 @@
           <view class="question-subtitle">{{ displayPhonetic }}</view>
           <view class="hint">{{ pronunciationInstruction }}</view>
           <view v-if="pronunciationExample" class="line">例句：{{ pronunciationExample }}</view>
-          <button type="primary" :loading="submitting" @tap="submitPronunciationAnswer">我已朗读</button>
+          <button
+            v-for="option in pronunciationRatingOptions"
+            :key="option.value"
+            class="option-btn"
+            :disabled="submitting"
+            @tap="submitPronunciationAnswer(option.value)"
+          >
+            {{ option.label }}
+          </button>
         </view>
 
         <view v-else>
@@ -91,7 +99,11 @@ import {
   postSubmitLearningAnswer,
   SubmitLearningAnswerResponse
 } from "../../../services/api";
-import { buildPronunciationAnswer, getLearningItemTypeLabel } from "./item-helpers";
+import {
+  buildPronunciationAnswer,
+  getLearningItemTypeLabel,
+  type PronunciationSelfRating
+} from "./item-helpers";
 import { useSessionStore } from "../../../stores/session";
 
 const sessionStore = useSessionStore();
@@ -104,6 +116,14 @@ const spellingInput = ref("");
 const feedbackCard = ref<SubmitLearningAnswerResponse | null>(null);
 const summary = ref<FinishLearningSessionResponse["summary"] | null>(null);
 const sessionId = ref("");
+const pronunciationRatingOptions: Array<{
+  value: PronunciationSelfRating;
+  label: string;
+}> = [
+  { value: "NEEDS_PRACTICE", label: "读不顺" },
+  { value: "OK", label: "基本读对" },
+  { value: "GOOD", label: "读得很好" }
+];
 
 const currentItem = computed(() => session.value?.items[currentIndex.value] ?? null);
 const currentPrompt = computed<Record<string, unknown>>(() => {
@@ -191,8 +211,8 @@ async function submitSpellingAnswer(): Promise<void> {
   await submitAnswer({ text: spellingInput.value.trim() });
 }
 
-async function submitPronunciationAnswer(): Promise<void> {
-  await submitAnswer(buildPronunciationAnswer());
+async function submitPronunciationAnswer(selfRating: PronunciationSelfRating): Promise<void> {
+  await submitAnswer(buildPronunciationAnswer(selfRating));
 }
 
 async function submitAnswer(answer: Record<string, unknown>): Promise<void> {
