@@ -66,6 +66,15 @@
         <view class="line">状态：{{ formatStatus(item.status) }}</view>
         <view class="line">计划时间：{{ formatTime(item.scheduledAt) }}</view>
 
+        <view v-if="getTaskInsight(item)" class="task-insight">
+          <view class="line">{{ getTaskInsight(item)?.modeLabel }} · {{ getTaskInsight(item)?.priorityLabel }}</view>
+          <view class="line">任务要点：{{ getTaskInsight(item)?.countSummary }}</view>
+          <view v-if="getTaskInsight(item)?.coachHint" class="line">提示：{{ getTaskInsight(item)?.coachHint }}</view>
+          <view v-if="getTaskInsight(item)?.previewWords.length" class="line">
+            词汇预览：{{ getTaskInsight(item)?.previewWords.join("、") }}
+          </view>
+        </view>
+
         <view class="actions">
           <button
             v-if="item.status === 'APPROVED' || item.status === 'MODIFIED'"
@@ -111,6 +120,7 @@ import {
   postDeliverPush
 } from "../../../services/api";
 import { useSessionStore } from "../../../stores/session";
+import { buildTaskInsight } from "./task-insights";
 
 interface PickerChangeEvent {
   detail: {
@@ -380,6 +390,10 @@ function formatStatus(value: ChildTask["status"]): string {
   }
 }
 
+function getTaskInsight(task: ChildTask) {
+  return buildTaskInsight(task.content);
+}
+
 function toErrorMessage(error: unknown): string {
   if (error instanceof Error && error.message) {
     return error.message;
@@ -455,6 +469,15 @@ function toErrorMessage(error: unknown): string {
   border-radius: 14rpx;
   background: #fff;
   border: 1rpx solid #e5e7eb;
+}
+
+.task-insight {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+  padding: 16rpx;
+  border-radius: 12rpx;
+  background: #f8fafc;
 }
 
 .task-title {
