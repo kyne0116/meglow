@@ -39,6 +39,16 @@
       <view v-if="getApprovalInsight(item)?.coachHint" class="line">
         学习提示：{{ getApprovalInsight(item)?.coachHint }}
       </view>
+      <view v-if="getQuickActions(item).length" class="preset-row">
+        <button
+          v-for="action in getQuickActions(item)"
+          :key="`${item.id}-${action.presetId}`"
+          size="mini"
+          @tap="applyQuickAction(item, action.presetId)"
+        >
+          {{ action.label }}
+        </button>
+      </view>
 
       <view class="actions">
         <button size="mini" type="primary" :loading="approvingId === item.id" @tap="approve(item.id)">通过</button>
@@ -129,6 +139,7 @@ import { useSessionStore } from "../../../stores/session";
 import { ApprovalAdjustmentPreset, buildApprovalAdjustmentPresets } from "./approval-adjustments";
 import { buildApprovalInsight } from "./approval-insights";
 import { prioritizePendingPushes } from "./approval-list-order";
+import { buildApprovalQuickActions } from "./approval-quick-actions";
 import { buildApprovalRecommendation } from "./approval-recommendation";
 
 interface PickerChangeEvent {
@@ -277,6 +288,10 @@ function getApprovalInsight(item: PendingPush) {
   return buildApprovalInsight(item.content);
 }
 
+function getQuickActions(item: PendingPush) {
+  return buildApprovalQuickActions(normalizeContent(item.content));
+}
+
 function handleApprovalRecommendation(): void {
   if (!approvalRecommendation.value) {
     return;
@@ -296,6 +311,14 @@ function handleApprovalRecommendation(): void {
   }
 
   void approve(target.id);
+}
+
+function applyQuickAction(item: PendingPush, presetId: ApprovalAdjustmentPreset["id"]): void {
+  startModify(item);
+  const preset = currentAdjustmentPresets.value.find((entry) => entry.id === presetId);
+  if (preset) {
+    applyAdjustmentPreset(preset);
+  }
 }
 
 function applyAdjustmentPreset(preset: ApprovalAdjustmentPreset): void {
