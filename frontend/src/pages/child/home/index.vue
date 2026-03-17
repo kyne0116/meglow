@@ -102,21 +102,21 @@
 
         <view class="actions">
           <button
+            v-if="getTaskCardAction(item)"
+            size="mini"
+            type="primary"
+            :loading="startingTaskId === item.id"
+            @tap="handleTaskCardAction(item)"
+          >
+            {{ getTaskCardAction(item)?.label }}
+          </button>
+          <button
             v-if="item.status === 'APPROVED' || item.status === 'MODIFIED'"
             size="mini"
             :loading="deliveringId === item.id"
             @tap="deliverTask(item.id)"
           >
             标记为已投递
-          </button>
-          <button
-            v-if="item.status === 'DELIVERED'"
-            size="mini"
-            type="primary"
-            :loading="startingTaskId === item.id"
-            @tap="startLearning(item.id)"
-          >
-            开始学习
           </button>
           <button
             v-if="item.status === 'DELIVERED'"
@@ -145,6 +145,7 @@ import {
   postDeliverPush
 } from "../../../services/api";
 import { useSessionStore } from "../../../stores/session";
+import { buildTaskCardAction } from "./task-card-actions";
 import { buildTaskInsight } from "./task-insights";
 import { prioritizeTasks } from "./task-list-order";
 import { buildTaskRecommendation } from "./task-recommendation";
@@ -360,6 +361,28 @@ async function startLearning(taskId: string): Promise<void> {
   }
 }
 
+async function handleTaskCardAction(task: ChildTask): Promise<void> {
+  const action = getTaskCardAction(task);
+  if (!action || !sessionStore.accessToken) {
+    return;
+  }
+
+  startingTaskId.value = task.id;
+  try {
+    if (action.actionType === "DELIVER_AND_START") {
+      await postDeliverPush(sessionStore.accessToken, task.id);
+    }
+    const session = await postCreateLearningSession(sessionStore.accessToken, task.id);
+    uni.navigateTo({
+      url: `/pages/child/session/index?sessionId=${encodeURIComponent(session.id)}&taskId=${encodeURIComponent(task.id)}`
+    });
+  } catch (error) {
+    uni.showToast({ title: toErrorMessage(error), icon: "none" });
+  } finally {
+    startingTaskId.value = "";
+  }
+}
+
 async function handleTaskRecommendation(): Promise<void> {
   if (!sessionStore.accessToken || !taskRecommendation.value) {
     return;
@@ -445,6 +468,10 @@ function formatStatus(value: ChildTask["status"]): string {
 
 function getTaskInsight(task: ChildTask) {
   return buildTaskInsight(task.content);
+}
+
+function getTaskCardAction(task: ChildTask) {
+  return buildTaskCardAction(task.status);
 }
 
 function toErrorMessage(error: unknown): string {
