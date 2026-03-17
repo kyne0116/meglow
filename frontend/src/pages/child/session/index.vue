@@ -143,6 +143,7 @@ import {
   getLearningItemTypeLabel,
   type PronunciationSelfRating
 } from "./item-helpers";
+import { pickFollowupPendingPush } from "./pending-push-match";
 import { buildSummaryNextStep, type SummaryNextStep } from "./summary-next-step";
 import { useSessionStore } from "../../../stores/session";
 
@@ -362,7 +363,10 @@ async function loadSummaryNextStep(needsReviewWordCount: number): Promise<Summar
   try {
     const tasks = await getChildTasks(sessionStore.accessToken, session.value.childId);
     const pendingPushes = await getPendingPushes(sessionStore.accessToken);
-    const nextPendingPush = pendingPushes.find((item) => item.childId === session.value?.childId);
+    const nextPendingPush = pickFollowupPendingPush(pendingPushes, {
+      childId: session.value.childId,
+      needsReviewWordCount
+    });
     return buildSummaryNextStep(tasks as ChildTask[], {
       currentTaskId: session.value.taskId,
       needsReviewWordCount,
