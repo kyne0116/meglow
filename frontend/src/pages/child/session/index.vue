@@ -31,6 +31,7 @@
         <view class="summary-title">{{ summaryNextStep.title }}</view>
         <view class="line">{{ summaryNextStep.description }}</view>
         <view v-if="summaryNextStep.nextTaskSummary" class="line">{{ summaryNextStep.nextTaskSummary }}</view>
+        <view v-if="summaryNextStep.pendingPushSummary" class="line">{{ summaryNextStep.pendingPushSummary }}</view>
       </view>
 
       <button type="primary" :loading="startingNextTask" @tap="handleSummaryAction">
@@ -129,6 +130,7 @@ import {
   FinishLearningSessionResponse,
   getChildTasks,
   getLearningSession,
+  getPendingPushes,
   LearningSession,
   postCreateLearningSession,
   postDeliverPush,
@@ -359,9 +361,12 @@ async function loadSummaryNextStep(needsReviewWordCount: number): Promise<Summar
 
   try {
     const tasks = await getChildTasks(sessionStore.accessToken, session.value.childId);
+    const pendingPushes = await getPendingPushes(sessionStore.accessToken);
+    const nextPendingPush = pendingPushes.find((item) => item.childId === session.value?.childId);
     return buildSummaryNextStep(tasks as ChildTask[], {
       currentTaskId: session.value.taskId,
-      needsReviewWordCount
+      needsReviewWordCount,
+      pendingPushSummary: nextPendingPush?.summary
     });
   } catch {
     return fallback;
