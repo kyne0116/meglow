@@ -32,7 +32,9 @@
         <view class="line">{{ summaryNextStep.description }}</view>
       </view>
 
-      <button type="primary" @tap="backToTasks">{{ summaryNextStep?.actionLabel ?? "返回任务面板" }}</button>
+      <button type="primary" :loading="startingNextTask" @tap="handleSummaryAction">
+        {{ summaryNextStep?.actionLabel ?? "返回任务面板" }}
+      </button>
     </view>
 
     <view v-else-if="currentItem" class="panel">
@@ -127,6 +129,7 @@ import {
   getChildTasks,
   getLearningSession,
   LearningSession,
+  postCreateLearningSession,
   postFinishLearningSession,
   postSubmitLearningAnswer,
   SubmitLearningAnswerResponse
@@ -143,6 +146,7 @@ const sessionStore = useSessionStore();
 const loading = ref(false);
 const submitting = ref(false);
 const finishing = ref(false);
+const startingNextTask = ref(false);
 const session = ref<LearningSession | null>(null);
 const currentIndex = ref(0);
 const spellingInput = ref("");
@@ -310,6 +314,31 @@ function backToTasks(): void {
   uni.redirectTo({
     url: "/pages/child/home/index"
   });
+}
+
+async function handleSummaryAction(): Promise<void> {
+  if (
+    summaryNextStep.value?.actionType === "START_NEXT_TASK" &&
+    summaryNextStep.value.taskId &&
+    sessionStore.accessToken
+  ) {
+    startingNextTask.value = true;
+    try {
+      const nextSession = await postCreateLearningSession(sessionStore.accessToken, summaryNextStep.value.taskId);
+      uni.redirectTo({
+        url: `/pages/child/session/index?sessionId=${encodeURIComponent(nextSession.id)}&taskId=${encodeURIComponent(
+          summaryNextStep.value.taskId
+        )}`
+      });
+      return;
+    } catch (error) {
+      uni.showToast({ title: toErrorMessage(error), icon: "none" });
+    } finally {
+      startingNextTask.value = false;
+    }
+  }
+
+  backToTasks();
 }
 
 async function loadSummaryNextStep(needsReviewWordCount: number): Promise<SummaryNextStep> {
