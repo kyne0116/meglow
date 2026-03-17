@@ -7,7 +7,9 @@
 
     <view v-else-if="approvalRecommendation" class="card recommend-card">
       <view class="card-title">{{ approvalRecommendation.title }}</view>
+      <view v-if="approvalRecommendation.targetSummary" class="line">{{ approvalRecommendation.targetSummary }}</view>
       <view class="line">{{ approvalRecommendation.description }}</view>
+      <view v-if="approvalRecommendation.focusSummary" class="line">{{ approvalRecommendation.focusSummary }}</view>
       <button
         size="mini"
         type="primary"

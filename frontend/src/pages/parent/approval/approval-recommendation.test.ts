@@ -33,6 +33,8 @@ test("buildApprovalRecommendation prefers focus review push for modify flow", ()
     pushId: "push-review",
     title: "推荐处理：先确认重点复习任务",
     description: "这条待审批任务带有重点复习词，建议先检查后再通过或调整。",
+    targetSummary: "复习任务",
+    focusSummary: "重点复习：apple（朗读题）",
     actionLabel: "套用强化发音预设",
     actionType: "APPLY_PRESET",
     presetId: "focus_pronunciation"
@@ -60,6 +62,8 @@ test("buildApprovalRecommendation falls back to focus review preset when no pron
     pushId: "push-review",
     title: "推荐处理：先确认重点复习任务",
     description: "这条待审批任务带有重点复习词，建议先检查后再通过或调整。",
+    targetSummary: "复习任务",
+    focusSummary: "重点复习：banana（拼写题）",
     actionLabel: "套用重点复习预设",
     actionType: "APPLY_PRESET",
     presetId: "focus_review"
@@ -86,6 +90,8 @@ test("buildApprovalRecommendation falls back to high priority approve", () => {
     pushId: "push-high",
     title: "推荐处理：优先通过高优先级任务",
     description: "这条任务已标记为高优先级，若无额外调整可直接通过。",
+    targetSummary: "高优先级任务",
+    focusSummary: "",
     actionLabel: "直接通过",
     actionType: "APPROVE"
   });
