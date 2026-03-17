@@ -9,7 +9,11 @@
       <view class="card-title">{{ approvalRecommendation.title }}</view>
       <view v-if="approvalRecommendation.targetSummary" class="line">{{ approvalRecommendation.targetSummary }}</view>
       <view class="line">{{ approvalRecommendation.description }}</view>
+      <view v-if="approvalRecommendation.expectedOutcome" class="line">
+        预期结果：{{ approvalRecommendation.expectedOutcome }}
+      </view>
       <view v-if="approvalRecommendation.focusSummary" class="line">{{ approvalRecommendation.focusSummary }}</view>
+      <view v-if="approvalRecommendation.coachHint" class="line">学习提示：{{ approvalRecommendation.coachHint }}</view>
       <button
         size="mini"
         type="primary"

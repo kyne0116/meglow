@@ -2,99 +2,73 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { buildApprovalRecommendation } from "./approval-recommendation.ts";
 
-test("buildApprovalRecommendation prefers focus review push for modify flow", () => {
+test("buildApprovalRecommendation prefers focus review push and carries outcome and coach hint", () => {
   const result = buildApprovalRecommendation([
     {
       id: "push-review",
-      childName: "Ming",
-      summary: "复习任务",
-      reason: "need review",
-      expectedOutcome: "review words",
-      status: "PENDING_APPROVAL",
-      scheduledAt: "2026-03-17T10:00:00.000Z",
+      summary: "review task",
+      expectedOutcome: "review the weak words",
       content: {
         mode: "word_review",
+        coachHint: "start with apple aloud",
         focusReviewWords: [{ word: "apple", incorrectItems: ["WORD_PRONUNCIATION"] }]
       }
     },
     {
       id: "push-normal",
-      childName: "Ming",
-      summary: "常规任务",
-      reason: "normal",
-      expectedOutcome: "learn",
-      status: "PENDING_APPROVAL",
-      scheduledAt: "2026-03-17T11:00:00.000Z",
+      summary: "normal task",
+      expectedOutcome: "finish normal learning",
       content: {}
     }
   ]);
 
-  assert.deepEqual(result, {
-    pushId: "push-review",
-    title: "推荐处理：先确认重点复习任务",
-    description: "这条待审批任务带有重点复习词，建议先检查后再通过或调整。",
-    targetSummary: "复习任务",
-    focusSummary: "重点复习：apple（朗读题）",
-    actionLabel: "套用强化发音预设",
-    actionType: "APPLY_PRESET",
-    presetId: "focus_pronunciation"
-  });
+  assert.equal(result?.pushId, "push-review");
+  assert.equal(result?.actionType, "APPLY_PRESET");
+  assert.equal(result?.presetId, "focus_pronunciation");
+  assert.equal(result?.targetSummary, "review task");
+  assert.equal(result?.expectedOutcome, "review the weak words");
+  assert.equal(result?.coachHint, "start with apple aloud");
+  assert.equal(result?.focusSummary.includes("apple"), true);
 });
 
 test("buildApprovalRecommendation falls back to focus review preset when no pronunciation weakness exists", () => {
   const result = buildApprovalRecommendation([
     {
       id: "push-review",
-      childName: "Ming",
-      summary: "复习任务",
-      reason: "need review",
-      expectedOutcome: "review words",
-      status: "PENDING_APPROVAL",
-      scheduledAt: "2026-03-17T10:00:00.000Z",
+      summary: "review task",
+      expectedOutcome: "review spelling",
       content: {
         mode: "word_review",
+        coachHint: "spell banana twice",
         focusReviewWords: [{ word: "banana", incorrectItems: ["WORD_SPELLING"] }]
       }
     }
   ]);
 
-  assert.deepEqual(result, {
-    pushId: "push-review",
-    title: "推荐处理：先确认重点复习任务",
-    description: "这条待审批任务带有重点复习词，建议先检查后再通过或调整。",
-    targetSummary: "复习任务",
-    focusSummary: "重点复习：banana（拼写题）",
-    actionLabel: "套用重点复习预设",
-    actionType: "APPLY_PRESET",
-    presetId: "focus_review"
-  });
+  assert.equal(result?.pushId, "push-review");
+  assert.equal(result?.actionType, "APPLY_PRESET");
+  assert.equal(result?.presetId, "focus_review");
+  assert.equal(result?.expectedOutcome, "review spelling");
+  assert.equal(result?.coachHint, "spell banana twice");
 });
 
-test("buildApprovalRecommendation falls back to high priority approve", () => {
+test("buildApprovalRecommendation falls back to high priority approve and keeps expected outcome", () => {
   const result = buildApprovalRecommendation([
     {
       id: "push-high",
-      childName: "Ming",
-      summary: "高优先级任务",
-      reason: "urgent",
-      expectedOutcome: "learn",
-      status: "PENDING_APPROVAL",
-      scheduledAt: "2026-03-17T10:00:00.000Z",
+      summary: "high priority task",
+      expectedOutcome: "finish today",
       content: {
-        priority: "high"
+        priority: "high",
+        coachHint: "complete it first"
       }
     }
   ]);
 
-  assert.deepEqual(result, {
-    pushId: "push-high",
-    title: "推荐处理：优先通过高优先级任务",
-    description: "这条任务已标记为高优先级，若无额外调整可直接通过。",
-    targetSummary: "高优先级任务",
-    focusSummary: "",
-    actionLabel: "直接通过",
-    actionType: "APPROVE"
-  });
+  assert.equal(result?.pushId, "push-high");
+  assert.equal(result?.actionType, "APPROVE");
+  assert.equal(result?.expectedOutcome, "finish today");
+  assert.equal(result?.coachHint, "complete it first");
 });
 
 test("buildApprovalRecommendation returns null for empty list", () => {

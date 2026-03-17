@@ -1,6 +1,7 @@
 interface PendingPushLike {
   id: string;
   summary?: string;
+  expectedOutcome?: string;
   content: Record<string, unknown>;
 }
 
@@ -9,7 +10,9 @@ export interface ApprovalRecommendation {
   title: string;
   description: string;
   targetSummary: string;
+  expectedOutcome: string;
   focusSummary: string;
+  coachHint: string;
   actionLabel: string;
   actionType: "APPLY_PRESET" | "APPROVE";
   presetId?: "focus_review" | "focus_pronunciation";
@@ -32,7 +35,9 @@ export function buildApprovalRecommendation(pending: PendingPushLike[]): Approva
       title: "推荐处理：先确认重点复习任务",
       description: "这条待审批任务带有重点复习词，建议先检查后再通过或调整。",
       targetSummary: String(focusReviewPush.summary ?? "").trim(),
+      expectedOutcome: String(focusReviewPush.expectedOutcome ?? "").trim(),
       focusSummary: toFocusSummary(focusReviewPush.content.focusReviewWords),
+      coachHint: String(focusReviewPush.content.coachHint ?? "").trim(),
       actionLabel: hasPronunciationWeakness ? "套用强化发音预设" : "套用重点复习预设",
       actionType: "APPLY_PRESET",
       presetId: hasPronunciationWeakness ? "focus_pronunciation" : "focus_review"
@@ -46,7 +51,9 @@ export function buildApprovalRecommendation(pending: PendingPushLike[]): Approva
       title: "推荐处理：优先通过高优先级任务",
       description: "这条任务已标记为高优先级，若无额外调整可直接通过。",
       targetSummary: String(highPriorityPush.summary ?? "").trim(),
+      expectedOutcome: String(highPriorityPush.expectedOutcome ?? "").trim(),
       focusSummary: "",
+      coachHint: String(highPriorityPush.content.coachHint ?? "").trim(),
       actionLabel: "直接通过",
       actionType: "APPROVE"
     };
