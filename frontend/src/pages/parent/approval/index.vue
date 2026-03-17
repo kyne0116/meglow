@@ -12,6 +12,9 @@
       <view v-if="approvalRecommendation.expectedOutcome" class="line">
         预期结果：{{ approvalRecommendation.expectedOutcome }}
       </view>
+      <view v-if="approvalRecommendation.scheduledTimeLabel" class="line">
+        计划时间：{{ approvalRecommendation.scheduledTimeLabel }}
+      </view>
       <view v-if="approvalRecommendation.focusSummary" class="line">{{ approvalRecommendation.focusSummary }}</view>
       <view v-if="approvalRecommendation.coachHint" class="line">学习提示：{{ approvalRecommendation.coachHint }}</view>
       <button

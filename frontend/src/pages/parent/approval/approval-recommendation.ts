@@ -2,6 +2,7 @@ interface PendingPushLike {
   id: string;
   summary?: string;
   expectedOutcome?: string;
+  scheduledAt?: string;
   content: Record<string, unknown>;
 }
 
@@ -11,6 +12,7 @@ export interface ApprovalRecommendation {
   description: string;
   targetSummary: string;
   expectedOutcome: string;
+  scheduledTimeLabel: string;
   focusSummary: string;
   coachHint: string;
   actionLabel: string;
@@ -36,6 +38,7 @@ export function buildApprovalRecommendation(pending: PendingPushLike[]): Approva
       description: "这条待审批任务带有重点复习词，建议先检查后再通过或调整。",
       targetSummary: String(focusReviewPush.summary ?? "").trim(),
       expectedOutcome: String(focusReviewPush.expectedOutcome ?? "").trim(),
+      scheduledTimeLabel: formatScheduledTime(focusReviewPush.scheduledAt),
       focusSummary: toFocusSummary(focusReviewPush.content.focusReviewWords),
       coachHint: String(focusReviewPush.content.coachHint ?? "").trim(),
       actionLabel: hasPronunciationWeakness ? "套用强化发音预设" : "套用重点复习预设",
@@ -52,6 +55,7 @@ export function buildApprovalRecommendation(pending: PendingPushLike[]): Approva
       description: "这条任务已标记为高优先级，若无额外调整可直接通过。",
       targetSummary: String(highPriorityPush.summary ?? "").trim(),
       expectedOutcome: String(highPriorityPush.expectedOutcome ?? "").trim(),
+      scheduledTimeLabel: formatScheduledTime(highPriorityPush.scheduledAt),
       focusSummary: "",
       coachHint: String(highPriorityPush.content.coachHint ?? "").trim(),
       actionLabel: "直接通过",
@@ -60,6 +64,25 @@ export function buildApprovalRecommendation(pending: PendingPushLike[]): Approva
   }
 
   return null;
+}
+
+function formatScheduledTime(value?: string): string {
+  if (!value) {
+    return "";
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())} ${pad2(date.getHours())}:${pad2(
+    date.getMinutes()
+  )}`;
+}
+
+function pad2(value: number): string {
+  return String(value).padStart(2, "0");
 }
 
 function toFocusSummary(value: unknown): string {

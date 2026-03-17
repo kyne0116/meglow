@@ -8,6 +8,7 @@ test("buildApprovalRecommendation prefers focus review push and carries outcome 
       id: "push-review",
       summary: "review task",
       expectedOutcome: "review the weak words",
+      scheduledAt: "2026-03-17T10:00:00.000Z",
       content: {
         mode: "word_review",
         coachHint: "start with apple aloud",
@@ -28,6 +29,7 @@ test("buildApprovalRecommendation prefers focus review push and carries outcome 
   assert.equal(result?.targetSummary, "review task");
   assert.equal(result?.expectedOutcome, "review the weak words");
   assert.equal(result?.coachHint, "start with apple aloud");
+  assert.equal(result?.scheduledTimeLabel, "2026-03-17 18:00");
   assert.equal(result?.focusSummary.includes("apple"), true);
 });
 
@@ -37,6 +39,7 @@ test("buildApprovalRecommendation falls back to focus review preset when no pron
       id: "push-review",
       summary: "review task",
       expectedOutcome: "review spelling",
+      scheduledAt: "2026-03-17T11:30:00.000Z",
       content: {
         mode: "word_review",
         coachHint: "spell banana twice",
@@ -50,6 +53,7 @@ test("buildApprovalRecommendation falls back to focus review preset when no pron
   assert.equal(result?.presetId, "focus_review");
   assert.equal(result?.expectedOutcome, "review spelling");
   assert.equal(result?.coachHint, "spell banana twice");
+  assert.equal(result?.scheduledTimeLabel, "2026-03-17 19:30");
 });
 
 test("buildApprovalRecommendation falls back to high priority approve and keeps expected outcome", () => {
@@ -58,6 +62,7 @@ test("buildApprovalRecommendation falls back to high priority approve and keeps 
       id: "push-high",
       summary: "high priority task",
       expectedOutcome: "finish today",
+      scheduledAt: "2026-03-17T08:15:00.000Z",
       content: {
         priority: "high",
         coachHint: "complete it first"
@@ -69,6 +74,7 @@ test("buildApprovalRecommendation falls back to high priority approve and keeps 
   assert.equal(result?.actionType, "APPROVE");
   assert.equal(result?.expectedOutcome, "finish today");
   assert.equal(result?.coachHint, "complete it first");
+  assert.equal(result?.scheduledTimeLabel, "2026-03-17 16:15");
 });
 
 test("buildApprovalRecommendation returns null for empty list", () => {
