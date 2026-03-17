@@ -35,6 +35,8 @@
         <view class="task-title">{{ taskRecommendation.title }}</view>
         <view class="line">{{ taskRecommendation.summary }}</view>
         <view class="line">{{ taskRecommendation.description }}</view>
+        <view v-if="taskRecommendation.focusSummary" class="line">{{ taskRecommendation.focusSummary }}</view>
+        <view v-if="taskRecommendation.coachHint" class="line">提示：{{ taskRecommendation.coachHint }}</view>
         <button
           size="mini"
           type="primary"

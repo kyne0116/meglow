@@ -25,6 +25,8 @@ test("buildTaskRecommendation prefers delivered focus review task", () => {
   assert.deepEqual(result, {
     title: "推荐下一步：开始重点复习",
     description: "先把最近出错的内容复习掉，再进入新的学习任务。",
+    focusSummary: "重点复习：apple（朗读题）",
+    coachHint: "先把 apple 读顺",
     actionLabel: "开始学习",
     actionType: "START_LEARNING",
     taskId: "task-delivered",
@@ -48,6 +50,8 @@ test("buildTaskRecommendation falls back to deliver-and-start", () => {
   assert.deepEqual(result, {
     title: "推荐下一步：投递后开始学习",
     description: "当前没有已投递任务，可以先投递这条任务并立即开始。",
+    focusSummary: "",
+    coachHint: "",
     actionLabel: "投递并开始",
     actionType: "DELIVER_AND_START",
     taskId: "task-approved",
