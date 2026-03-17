@@ -5,6 +5,19 @@
 
     <view v-if="pending.length === 0 && !loading" class="empty">当前没有待审批推送。</view>
 
+    <view v-else-if="approvalRecommendation" class="card recommend-card">
+      <view class="card-title">{{ approvalRecommendation.title }}</view>
+      <view class="line">{{ approvalRecommendation.description }}</view>
+      <button
+        size="mini"
+        type="primary"
+        :loading="approvingId === approvalRecommendation.pushId"
+        @tap="handleApprovalRecommendation"
+      >
+        {{ approvalRecommendation.actionLabel }}
+      </button>
+    </view>
+
     <view v-for="item in pending" :key="item.id" class="card">
       <view class="card-title">{{ item.childName }}: {{ item.summary }}</view>
       <view class="line">原因：{{ item.reason }}</view>
@@ -109,6 +122,7 @@ import { ApprovePushRequest, getPendingPushes, PendingPush, postApprovePush } fr
 import { useSessionStore } from "../../../stores/session";
 import { ApprovalAdjustmentPreset, buildApprovalAdjustmentPresets } from "./approval-adjustments";
 import { buildApprovalInsight } from "./approval-insights";
+import { buildApprovalRecommendation } from "./approval-recommendation";
 
 interface PickerChangeEvent {
   detail: {
@@ -135,6 +149,7 @@ const structuredDueWordsInput = ref("");
 const structuredWordsCsv = ref("");
 const structuredCoachHintInput = ref("");
 const structuredPriorityInput = ref("");
+const approvalRecommendation = computed(() => buildApprovalRecommendation(pending.value));
 
 const modifiedContentError = computed(() => validateJsonObject(modifiedContentJson.value));
 const modifyPreviewText = computed(() => {
@@ -252,6 +267,23 @@ function onAdjustmentModeChange(event: PickerChangeEvent): void {
 
 function getApprovalInsight(item: PendingPush) {
   return buildApprovalInsight(item.content);
+}
+
+function handleApprovalRecommendation(): void {
+  if (!approvalRecommendation.value) {
+    return;
+  }
+  const target = pending.value.find((item) => item.id === approvalRecommendation.value?.pushId);
+  if (!target) {
+    return;
+  }
+
+  if (approvalRecommendation.value.actionType === "OPEN_MODIFY") {
+    startModify(target);
+    return;
+  }
+
+  void approve(target.id);
 }
 
 function applyAdjustmentPreset(preset: ApprovalAdjustmentPreset): void {
@@ -504,6 +536,11 @@ function pad2(value: number): string {
   border-radius: 12rpx;
   background: #fff;
   border: 1rpx solid #e5e7eb;
+}
+
+.recommend-card {
+  background: #ecfeff;
+  border-color: #67e8f9;
 }
 
 .card-title {
