@@ -30,6 +30,7 @@
       <view v-if="summaryNextStep" class="summary-card">
         <view class="summary-title">{{ summaryNextStep.title }}</view>
         <view class="line">{{ summaryNextStep.description }}</view>
+        <view v-if="summaryNextStep.nextTaskSummary" class="line">{{ summaryNextStep.nextTaskSummary }}</view>
       </view>
 
       <button type="primary" :loading="startingNextTask" @tap="handleSummaryAction">
