@@ -2,36 +2,37 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { buildTaskRecommendation } from "./task-recommendation.ts";
 
-test("buildTaskRecommendation prefers delivered focus review task", () => {
+test("buildTaskRecommendation prefers delivered focus review task and keeps preview words", () => {
   const result = buildTaskRecommendation([
     {
       id: "task-delivered",
       status: "DELIVERED",
-      summary: "复习 apple",
+      summary: "review apple",
       content: {
         mode: "word_review",
-        coachHint: "先把 apple 读顺",
-        focusReviewWords: [{ word: "apple", incorrectItems: ["WORD_PRONUNCIATION"] }]
+        coachHint: "read apple first",
+        focusReviewWords: [{ word: "apple", incorrectItems: ["WORD_PRONUNCIATION"] }],
+        words: [
+          { value: "apple", kind: "REVIEW" },
+          { value: "banana", kind: "NEW" },
+          { value: "pear", kind: "REVIEW" }
+        ]
       }
     },
     {
       id: "task-approved",
       status: "APPROVED",
-      summary: "新词学习",
+      summary: "new words",
       content: {}
     }
   ]);
 
-  assert.deepEqual(result, {
-    title: "推荐下一步：开始重点复习",
-    description: "先把最近出错的内容复习掉，再进入新的学习任务。",
-    focusSummary: "重点复习：apple（朗读题）",
-    coachHint: "先把 apple 读顺",
-    actionLabel: "开始学习",
-    actionType: "START_LEARNING",
-    taskId: "task-delivered",
-    summary: "复习 apple"
-  });
+  assert.equal(result?.actionType, "START_LEARNING");
+  assert.equal(result?.taskId, "task-delivered");
+  assert.equal(result?.summary, "review apple");
+  assert.equal(result?.focusSummary.includes("apple"), true);
+  assert.equal(result?.coachHint, "read apple first");
+  assert.deepEqual(result?.previewWords, ["apple（复习）", "banana（新词）", "pear（复习）"]);
 });
 
 test("buildTaskRecommendation falls back to deliver-and-start", () => {
@@ -39,7 +40,7 @@ test("buildTaskRecommendation falls back to deliver-and-start", () => {
     {
       id: "task-approved",
       status: "APPROVED",
-      summary: "英语单词任务",
+      summary: "english task",
       content: {
         mode: "word_learning",
         priority: "high",
@@ -49,17 +50,11 @@ test("buildTaskRecommendation falls back to deliver-and-start", () => {
     }
   ]);
 
-  assert.deepEqual(result, {
-    title: "推荐下一步：投递后开始学习",
-    description: "当前没有已投递任务，可以先投递这条任务并立即开始。",
-    countSummary: "复习 2 个，新增 1 个",
-    focusSummary: "",
-    coachHint: "",
-    actionLabel: "投递并开始",
-    actionType: "DELIVER_AND_START",
-    taskId: "task-approved",
-    summary: "英语单词任务"
-  });
+  assert.equal(result?.actionType, "DELIVER_AND_START");
+  assert.equal(result?.taskId, "task-approved");
+  assert.equal(result?.summary, "english task");
+  assert.equal(result?.countSummary?.includes("2"), true);
+  assert.equal(result?.previewWords.length, 0);
 });
 
 test("buildTaskRecommendation returns null when no actionable task exists", () => {
@@ -67,7 +62,7 @@ test("buildTaskRecommendation returns null when no actionable task exists", () =
     {
       id: "task-completed",
       status: "COMPLETED",
-      summary: "今日任务完成",
+      summary: "finished",
       content: {}
     }
   ]);

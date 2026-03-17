@@ -38,6 +38,9 @@
         <view v-if="taskRecommendation.countSummary" class="line">任务要点：{{ taskRecommendation.countSummary }}</view>
         <view v-if="taskRecommendation.focusSummary" class="line">{{ taskRecommendation.focusSummary }}</view>
         <view v-if="taskRecommendation.coachHint" class="line">提示：{{ taskRecommendation.coachHint }}</view>
+        <view v-if="taskRecommendation.previewWords.length" class="line">
+          词汇预览：{{ taskRecommendation.previewWords.join("、") }}
+        </view>
         <button
           size="mini"
           type="primary"

@@ -13,6 +13,7 @@ export interface TaskRecommendation {
   countSummary?: string;
   focusSummary: string;
   coachHint: string;
+  previewWords: string[];
   actionLabel: string;
   actionType: "START_LEARNING" | "DELIVER_AND_START";
   taskId: string;
@@ -24,53 +25,51 @@ export function buildTaskRecommendation(tasks: TaskLike[]): TaskRecommendation |
     (task) => task.status === "DELIVERED" && Array.isArray(task.content.focusReviewWords) && task.content.focusReviewWords.length > 0
   );
   if (deliveredFocusTask) {
-    const countSummary = toCountSummary(deliveredFocusTask.content);
-    return {
+    return buildRecommendation(deliveredFocusTask, {
       title: "推荐下一步：开始重点复习",
       description: "先把最近出错的内容复习掉，再进入新的学习任务。",
-      ...(countSummary ? { countSummary } : {}),
-      focusSummary: toFocusSummary(deliveredFocusTask.content.focusReviewWords),
-      coachHint: String(deliveredFocusTask.content.coachHint ?? "").trim(),
       actionLabel: "开始学习",
-      actionType: "START_LEARNING",
-      taskId: deliveredFocusTask.id,
-      summary: deliveredFocusTask.summary
-    };
+      actionType: "START_LEARNING"
+    });
   }
 
   const deliveredTask = tasks.find((task) => task.status === "DELIVERED");
   if (deliveredTask) {
-    const countSummary = toCountSummary(deliveredTask.content);
-    return {
+    return buildRecommendation(deliveredTask, {
       title: "推荐下一步：开始今天的学习",
       description: "当前已有可直接开始的任务，先完成这一条最顺畅。",
-      ...(countSummary ? { countSummary } : {}),
-      focusSummary: toFocusSummary(deliveredTask.content.focusReviewWords),
-      coachHint: String(deliveredTask.content.coachHint ?? "").trim(),
       actionLabel: "开始学习",
-      actionType: "START_LEARNING",
-      taskId: deliveredTask.id,
-      summary: deliveredTask.summary
-    };
+      actionType: "START_LEARNING"
+    });
   }
 
   const deliverableTask = tasks.find((task) => task.status === "APPROVED" || task.status === "MODIFIED");
   if (deliverableTask) {
-    const countSummary = toCountSummary(deliverableTask.content);
-    return {
+    return buildRecommendation(deliverableTask, {
       title: "推荐下一步：投递后开始学习",
       description: "当前没有已投递任务，可以先投递这条任务并立即开始。",
-      ...(countSummary ? { countSummary } : {}),
-      focusSummary: "",
-      coachHint: "",
       actionLabel: "投递并开始",
-      actionType: "DELIVER_AND_START",
-      taskId: deliverableTask.id,
-      summary: deliverableTask.summary
-    };
+      actionType: "DELIVER_AND_START"
+    });
   }
 
   return null;
+}
+
+function buildRecommendation(
+  task: TaskLike,
+  options: Pick<TaskRecommendation, "title" | "description" | "actionLabel" | "actionType">
+): TaskRecommendation {
+  const countSummary = toCountSummary(task.content);
+  return {
+    ...options,
+    ...(countSummary ? { countSummary } : {}),
+    focusSummary: toFocusSummary(task.content.focusReviewWords),
+    coachHint: String(task.content.coachHint ?? "").trim(),
+    previewWords: toPreviewWords(task.content.words),
+    taskId: task.id,
+    summary: task.summary
+  };
 }
 
 function toCountSummary(content: Record<string, unknown>): string | undefined {
@@ -114,6 +113,23 @@ function toFocusSummary(value: unknown): string {
     .join("、");
 
   return summary ? `重点复习：${summary}` : "";
+}
+
+function toPreviewWords(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .filter((item): item is Record<string, unknown> => typeof item === "object" && item !== null)
+    .slice(0, 3)
+    .map((item) => {
+      const word = String(item.value ?? "").trim();
+      const kind = String(item.kind ?? "").trim().toUpperCase();
+      const kindLabel = kind === "REVIEW" ? "复习" : "新词";
+      return word ? `${word}（${kindLabel}）` : "";
+    })
+    .filter(Boolean);
 }
 
 function toItemTypeLabel(value: unknown): string {
