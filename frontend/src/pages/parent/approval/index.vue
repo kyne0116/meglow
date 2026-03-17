@@ -18,7 +18,13 @@
       </button>
     </view>
 
-    <view v-for="item in pending" :key="item.id" class="card">
+    <view
+      v-for="item in prioritizedPending"
+      :key="item.id"
+      class="card"
+      :class="{ 'card--recommended': item.id === approvalRecommendation?.pushId }"
+    >
+      <view v-if="item.id === approvalRecommendation?.pushId" class="recommend-badge">推荐优先处理</view>
       <view class="card-title">{{ item.childName }}: {{ item.summary }}</view>
       <view class="line">原因：{{ item.reason }}</view>
       <view class="line">预期结果：{{ item.expectedOutcome }}</view>
@@ -122,6 +128,7 @@ import { ApprovePushRequest, getPendingPushes, PendingPush, postApprovePush } fr
 import { useSessionStore } from "../../../stores/session";
 import { ApprovalAdjustmentPreset, buildApprovalAdjustmentPresets } from "./approval-adjustments";
 import { buildApprovalInsight } from "./approval-insights";
+import { prioritizePendingPushes } from "./approval-list-order";
 import { buildApprovalRecommendation } from "./approval-recommendation";
 
 interface PickerChangeEvent {
@@ -150,6 +157,7 @@ const structuredWordsCsv = ref("");
 const structuredCoachHintInput = ref("");
 const structuredPriorityInput = ref("");
 const approvalRecommendation = computed(() => buildApprovalRecommendation(pending.value));
+const prioritizedPending = computed(() => prioritizePendingPushes(pending.value, approvalRecommendation.value?.pushId));
 
 const modifiedContentError = computed(() => validateJsonObject(modifiedContentJson.value));
 const modifyPreviewText = computed(() => {
@@ -545,6 +553,21 @@ function pad2(value: number): string {
 .recommend-card {
   background: #ecfeff;
   border-color: #67e8f9;
+}
+
+.card--recommended {
+  border-color: #22c55e;
+  box-shadow: 0 0 0 2rpx rgba(34, 197, 94, 0.12);
+}
+
+.recommend-badge {
+  display: inline-flex;
+  align-self: flex-start;
+  padding: 6rpx 12rpx;
+  border-radius: 999rpx;
+  background: #dcfce7;
+  color: #166534;
+  font-size: 22rpx;
 }
 
 .card-title {

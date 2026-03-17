@@ -77,7 +77,13 @@
 
       <view v-if="filteredTasks.length === 0 && !loading" class="empty">当前筛选条件下没有任务。</view>
 
-      <view v-for="item in filteredTasks" :key="item.id" class="task-card">
+      <view
+        v-for="item in prioritizedTasks"
+        :key="item.id"
+        class="task-card"
+        :class="{ 'task-card--recommended': item.id === taskRecommendation?.taskId }"
+      >
+        <view v-if="item.id === taskRecommendation?.taskId" class="recommend-badge">推荐优先处理</view>
         <view class="task-title">{{ item.summary }}</view>
         <view class="line">状态：{{ formatStatus(item.status) }}</view>
         <view class="line">计划时间：{{ formatTime(item.scheduledAt) }}</view>
@@ -140,6 +146,7 @@ import {
 } from "../../../services/api";
 import { useSessionStore } from "../../../stores/session";
 import { buildTaskInsight } from "./task-insights";
+import { prioritizeTasks } from "./task-list-order";
 import { buildTaskRecommendation } from "./task-recommendation";
 
 interface PickerChangeEvent {
@@ -184,6 +191,7 @@ const filteredDeliverableTasks = computed(() =>
 const filteredLearnableTasks = computed(() => filteredTasks.value.filter((item) => item.status === "DELIVERED"));
 const filteredCompletableTasks = computed(() => filteredTasks.value.filter((item) => item.status === "DELIVERED"));
 const taskRecommendation = computed(() => buildTaskRecommendation(filteredTasks.value));
+const prioritizedTasks = computed(() => prioritizeTasks(filteredTasks.value, taskRecommendation.value?.taskId));
 
 onLoad(async () => {
   await initialize();
@@ -524,6 +532,20 @@ function toErrorMessage(error: unknown): string {
   border-radius: 14rpx;
   background: #fff;
   border: 1rpx solid #e5e7eb;
+}
+
+.task-card--recommended {
+  border-color: #22c55e;
+  box-shadow: 0 0 0 2rpx rgba(34, 197, 94, 0.12);
+}
+
+.recommend-badge {
+  align-self: flex-start;
+  padding: 6rpx 12rpx;
+  border-radius: 999rpx;
+  background: #dcfce7;
+  color: #166534;
+  font-size: 22rpx;
 }
 
 .task-insight {
