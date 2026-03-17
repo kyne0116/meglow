@@ -31,6 +31,20 @@
 
       <button class="refresh-btn" :loading="loading" @tap="loadTasks">刷新任务</button>
 
+      <view v-if="taskRecommendation" class="recommend-card">
+        <view class="task-title">{{ taskRecommendation.title }}</view>
+        <view class="line">{{ taskRecommendation.summary }}</view>
+        <view class="line">{{ taskRecommendation.description }}</view>
+        <button
+          size="mini"
+          type="primary"
+          :loading="recommendedActionLoading"
+          @tap="handleTaskRecommendation"
+        >
+          {{ taskRecommendation.actionLabel }}
+        </button>
+      </view>
+
       <view class="summary">
         <text>总数：{{ tasks.length }}</text>
         <text>筛选后：{{ filteredTasks.length }}</text>
@@ -124,6 +138,7 @@ import {
 } from "../../../services/api";
 import { useSessionStore } from "../../../stores/session";
 import { buildTaskInsight } from "./task-insights";
+import { buildTaskRecommendation } from "./task-recommendation";
 
 interface PickerChangeEvent {
   detail: {
@@ -142,6 +157,7 @@ const deliveringId = ref("");
 const startingTaskId = ref("");
 const batchDelivering = ref(false);
 const batchCompleting = ref(false);
+const recommendedActionLoading = ref(false);
 const children = ref<ChildSummary[]>([]);
 const selectedChildIndex = ref(0);
 const tasks = ref<ChildTask[]>([]);
@@ -165,6 +181,7 @@ const filteredDeliverableTasks = computed(() =>
 );
 const filteredLearnableTasks = computed(() => filteredTasks.value.filter((item) => item.status === "DELIVERED"));
 const filteredCompletableTasks = computed(() => filteredTasks.value.filter((item) => item.status === "DELIVERED"));
+const taskRecommendation = computed(() => buildTaskRecommendation(filteredTasks.value));
 
 onLoad(async () => {
   await initialize();
@@ -333,6 +350,29 @@ async function startLearning(taskId: string): Promise<void> {
   }
 }
 
+async function handleTaskRecommendation(): Promise<void> {
+  if (!sessionStore.accessToken || !taskRecommendation.value) {
+    return;
+  }
+
+  recommendedActionLoading.value = true;
+  try {
+    if (taskRecommendation.value.actionType === "DELIVER_AND_START") {
+      await postDeliverPush(sessionStore.accessToken, taskRecommendation.value.taskId);
+    }
+    const session = await postCreateLearningSession(sessionStore.accessToken, taskRecommendation.value.taskId);
+    uni.navigateTo({
+      url: `/pages/child/session/index?sessionId=${encodeURIComponent(session.id)}&taskId=${encodeURIComponent(
+        taskRecommendation.value.taskId
+      )}`
+    });
+  } catch (error) {
+    uni.showToast({ title: toErrorMessage(error), icon: "none" });
+  } finally {
+    recommendedActionLoading.value = false;
+  }
+}
+
 function restoreFilters(childId: string): void {
   const raw = uni.getStorageSync(`${FILTER_STORAGE_PREFIX}${childId}`) as
     | { dateFilter?: string; statusFilter?: StatusFilter }
@@ -455,6 +495,16 @@ function toErrorMessage(error: unknown): string {
   gap: 18rpx;
   color: #667085;
   font-size: 24rpx;
+}
+
+.recommend-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+  padding: 20rpx;
+  border-radius: 14rpx;
+  background: #ecfeff;
+  border: 1rpx solid #a5f3fc;
 }
 
 .quick-row,
