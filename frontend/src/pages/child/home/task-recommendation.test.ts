@@ -2,12 +2,13 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { buildTaskRecommendation } from "./task-recommendation.ts";
 
-test("buildTaskRecommendation prefers delivered focus review task and keeps preview words", () => {
+test("buildTaskRecommendation prefers delivered focus review task and keeps preview words and schedule", () => {
   const result = buildTaskRecommendation([
     {
       id: "task-delivered",
       status: "DELIVERED",
       summary: "review apple",
+      scheduledAt: "2026-03-17T09:30:00.000Z",
       content: {
         mode: "word_review",
         coachHint: "read apple first",
@@ -23,6 +24,7 @@ test("buildTaskRecommendation prefers delivered focus review task and keeps prev
       id: "task-approved",
       status: "APPROVED",
       summary: "new words",
+      scheduledAt: "2026-03-17T11:00:00.000Z",
       content: {}
     }
   ]);
@@ -32,15 +34,17 @@ test("buildTaskRecommendation prefers delivered focus review task and keeps prev
   assert.equal(result?.summary, "review apple");
   assert.equal(result?.focusSummary.includes("apple"), true);
   assert.equal(result?.coachHint, "read apple first");
+  assert.equal(result?.scheduledTimeLabel, "2026-03-17 17:30");
   assert.deepEqual(result?.previewWords, ["apple（复习）", "banana（新词）", "pear（复习）"]);
 });
 
-test("buildTaskRecommendation falls back to deliver-and-start", () => {
+test("buildTaskRecommendation falls back to deliver-and-start and keeps schedule", () => {
   const result = buildTaskRecommendation([
     {
       id: "task-approved",
       status: "APPROVED",
       summary: "english task",
+      scheduledAt: "2026-03-17T07:15:00.000Z",
       content: {
         mode: "word_learning",
         priority: "high",
@@ -54,6 +58,7 @@ test("buildTaskRecommendation falls back to deliver-and-start", () => {
   assert.equal(result?.taskId, "task-approved");
   assert.equal(result?.summary, "english task");
   assert.equal(result?.countSummary?.includes("2"), true);
+  assert.equal(result?.scheduledTimeLabel, "2026-03-17 15:15");
   assert.equal(result?.previewWords.length, 0);
 });
 
@@ -63,6 +68,7 @@ test("buildTaskRecommendation returns null when no actionable task exists", () =
       id: "task-completed",
       status: "COMPLETED",
       summary: "finished",
+      scheduledAt: "2026-03-17T07:15:00.000Z",
       content: {}
     }
   ]);

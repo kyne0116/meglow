@@ -4,6 +4,7 @@ interface TaskLike {
   id: string;
   status: TaskStatus;
   summary: string;
+  scheduledAt?: string;
   content: Record<string, unknown>;
 }
 
@@ -11,6 +12,7 @@ export interface TaskRecommendation {
   title: string;
   description: string;
   countSummary?: string;
+  scheduledTimeLabel: string;
   focusSummary: string;
   coachHint: string;
   previewWords: string[];
@@ -64,12 +66,32 @@ function buildRecommendation(
   return {
     ...options,
     ...(countSummary ? { countSummary } : {}),
+    scheduledTimeLabel: formatScheduledTime(task.scheduledAt),
     focusSummary: toFocusSummary(task.content.focusReviewWords),
     coachHint: String(task.content.coachHint ?? "").trim(),
     previewWords: toPreviewWords(task.content.words),
     taskId: task.id,
     summary: task.summary
   };
+}
+
+function formatScheduledTime(value?: string): string {
+  if (!value) {
+    return "";
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())} ${pad2(date.getHours())}:${pad2(
+    date.getMinutes()
+  )}`;
+}
+
+function pad2(value: number): string {
+  return String(value).padStart(2, "0");
 }
 
 function toCountSummary(content: Record<string, unknown>): string | undefined {
