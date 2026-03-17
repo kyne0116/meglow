@@ -130,6 +130,7 @@ import {
   getLearningSession,
   LearningSession,
   postCreateLearningSession,
+  postDeliverPush,
   postFinishLearningSession,
   postSubmitLearningAnswer,
   SubmitLearningAnswerResponse
@@ -318,12 +319,16 @@ function backToTasks(): void {
 
 async function handleSummaryAction(): Promise<void> {
   if (
-    summaryNextStep.value?.actionType === "START_NEXT_TASK" &&
+    (summaryNextStep.value?.actionType === "START_NEXT_TASK" ||
+      summaryNextStep.value?.actionType === "DELIVER_AND_START_NEXT_TASK") &&
     summaryNextStep.value.taskId &&
     sessionStore.accessToken
   ) {
     startingNextTask.value = true;
     try {
+      if (summaryNextStep.value.actionType === "DELIVER_AND_START_NEXT_TASK") {
+        await postDeliverPush(sessionStore.accessToken, summaryNextStep.value.taskId);
+      }
       const nextSession = await postCreateLearningSession(sessionStore.accessToken, summaryNextStep.value.taskId);
       uni.redirectTo({
         url: `/pages/child/session/index?sessionId=${encodeURIComponent(nextSession.id)}&taskId=${encodeURIComponent(

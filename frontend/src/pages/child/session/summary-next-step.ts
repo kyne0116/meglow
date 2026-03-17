@@ -14,7 +14,7 @@ export interface SummaryNextStep {
   title: string;
   description: string;
   actionLabel: string;
-  actionType: "START_NEXT_TASK" | "OPEN_TASK_PANEL";
+  actionType: "START_NEXT_TASK" | "DELIVER_AND_START_NEXT_TASK" | "OPEN_TASK_PANEL";
   taskId?: string;
 }
 
@@ -35,13 +35,15 @@ export function buildSummaryNextStep(
     };
   }
 
-  const deliverableCount = tasks.filter((task) => task.status === "APPROVED" || task.status === "MODIFIED").length;
+  const deliverableTasks = tasks.filter((task) => task.status === "APPROVED" || task.status === "MODIFIED");
+  const deliverableCount = deliverableTasks.length;
   if (deliverableCount > 0) {
     return {
       title: "下一步：还有待投递任务",
       description: `任务面板里还有 ${deliverableCount} 条任务待投递，返回后先标记已投递，再开始学习。`,
-      actionLabel: "返回任务面板处理任务",
-      actionType: "OPEN_TASK_PANEL"
+      actionLabel: "投递并继续下一条任务",
+      actionType: "DELIVER_AND_START_NEXT_TASK",
+      taskId: deliverableTasks[0]?.id
     };
   }
 

@@ -34,8 +34,9 @@ test("buildSummaryNextStep falls back to deliverable tasks", () => {
   assert.deepEqual(result, {
     title: "下一步：还有待投递任务",
     description: "任务面板里还有 2 条任务待投递，返回后先标记已投递，再开始学习。",
-    actionLabel: "返回任务面板处理任务",
-    actionType: "OPEN_TASK_PANEL"
+    actionLabel: "投递并继续下一条任务",
+    actionType: "DELIVER_AND_START_NEXT_TASK",
+    taskId: "task-next"
   });
 });
 
