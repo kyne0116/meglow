@@ -31,6 +31,17 @@
       <view v-if="editingPushId === item.id" class="modify-panel">
         <view class="panel-title">修改推送</view>
 
+        <view v-if="currentAdjustmentPresets.length" class="preset-row">
+          <button
+            v-for="preset in currentAdjustmentPresets"
+            :key="preset.id"
+            size="mini"
+            @tap="applyAdjustmentPreset(preset)"
+          >
+            套用：{{ preset.label }}
+          </button>
+        </view>
+
         <view class="field">
           <text class="label">调整模式</text>
           <picker :range="adjustmentModeLabels" :value="selectedAdjustmentModeIndex" @change="onAdjustmentModeChange">
@@ -96,6 +107,7 @@ import { onLoad, onShow } from "@dcloudio/uni-app";
 import { computed, ref } from "vue";
 import { ApprovePushRequest, getPendingPushes, PendingPush, postApprovePush } from "../../../services/api";
 import { useSessionStore } from "../../../stores/session";
+import { ApprovalAdjustmentPreset, buildApprovalAdjustmentPresets } from "./approval-adjustments";
 import { buildApprovalInsight } from "./approval-insights";
 
 interface PickerChangeEvent {
@@ -110,6 +122,7 @@ const approvingId = ref("");
 const pending = ref<PendingPush[]>([]);
 
 const editingPushId = ref("");
+const currentAdjustmentPresets = ref<ApprovalAdjustmentPreset[]>([]);
 const adjustmentModeOptions = ["lite_review_mode", "normal_review_mode", "focus_pronunciation_mode"] as const;
 const adjustmentModeLabels = ["轻量复习", "标准复习", "强化发音"];
 const selectedAdjustmentModeIndex = ref(0);
@@ -206,6 +219,7 @@ function startModify(item: PendingPush): void {
   const baseText = JSON.stringify(base, null, 2);
   originalContentJson.value = baseText;
   modifiedContentJson.value = baseText;
+  currentAdjustmentPresets.value = buildApprovalAdjustmentPresets(base);
   hydrateStructuredFields(base);
 }
 
@@ -224,6 +238,7 @@ function cancelModify(): void {
   modifyComment.value = "在家长小程序中修改";
   originalContentJson.value = "{}";
   modifiedContentJson.value = "{}";
+  currentAdjustmentPresets.value = [];
   clearStructuredFields();
 }
 
@@ -237,6 +252,19 @@ function onAdjustmentModeChange(event: PickerChangeEvent): void {
 
 function getApprovalInsight(item: PendingPush) {
   return buildApprovalInsight(item.content);
+}
+
+function applyAdjustmentPreset(preset: ApprovalAdjustmentPreset): void {
+  modifiedContentJson.value = originalContentJson.value;
+  const adjustmentIndex = adjustmentModeOptions.indexOf(preset.adjustmentMode);
+  selectedAdjustmentModeIndex.value = adjustmentIndex >= 0 ? adjustmentIndex : 0;
+  structuredModeInput.value = preset.mode;
+  structuredWordsCsv.value = preset.words.join(",");
+  structuredDueWordsInput.value = String(preset.words.length);
+  structuredCoachHintInput.value = preset.coachHint;
+  structuredPriorityInput.value = preset.priority;
+  wordsLimitInput.value = String(preset.wordsLimit);
+  applyStructuredFieldsToJson();
 }
 
 async function submitModify(pushId: string): Promise<void> {
@@ -512,6 +540,13 @@ function pad2(value: number): string {
   font-size: 26rpx;
   font-weight: 600;
   color: #0f172a;
+}
+
+.preset-row {
+  margin-top: 12rpx;
+  display: flex;
+  gap: 10rpx;
+  flex-wrap: wrap;
 }
 
 .field {
