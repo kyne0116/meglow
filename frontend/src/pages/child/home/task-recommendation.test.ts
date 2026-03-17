@@ -42,7 +42,9 @@ test("buildTaskRecommendation falls back to deliver-and-start", () => {
       summary: "英语单词任务",
       content: {
         mode: "word_learning",
-        priority: "high"
+        priority: "high",
+        dueWords: 2,
+        newWords: 1
       }
     }
   ]);
@@ -50,6 +52,7 @@ test("buildTaskRecommendation falls back to deliver-and-start", () => {
   assert.deepEqual(result, {
     title: "推荐下一步：投递后开始学习",
     description: "当前没有已投递任务，可以先投递这条任务并立即开始。",
+    countSummary: "复习 2 个，新增 1 个",
     focusSummary: "",
     coachHint: "",
     actionLabel: "投递并开始",

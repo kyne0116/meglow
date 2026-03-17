@@ -10,6 +10,7 @@ interface TaskLike {
 export interface TaskRecommendation {
   title: string;
   description: string;
+  countSummary?: string;
   focusSummary: string;
   coachHint: string;
   actionLabel: string;
@@ -23,9 +24,11 @@ export function buildTaskRecommendation(tasks: TaskLike[]): TaskRecommendation |
     (task) => task.status === "DELIVERED" && Array.isArray(task.content.focusReviewWords) && task.content.focusReviewWords.length > 0
   );
   if (deliveredFocusTask) {
+    const countSummary = toCountSummary(deliveredFocusTask.content);
     return {
       title: "推荐下一步：开始重点复习",
       description: "先把最近出错的内容复习掉，再进入新的学习任务。",
+      ...(countSummary ? { countSummary } : {}),
       focusSummary: toFocusSummary(deliveredFocusTask.content.focusReviewWords),
       coachHint: String(deliveredFocusTask.content.coachHint ?? "").trim(),
       actionLabel: "开始学习",
@@ -37,9 +40,11 @@ export function buildTaskRecommendation(tasks: TaskLike[]): TaskRecommendation |
 
   const deliveredTask = tasks.find((task) => task.status === "DELIVERED");
   if (deliveredTask) {
+    const countSummary = toCountSummary(deliveredTask.content);
     return {
       title: "推荐下一步：开始今天的学习",
       description: "当前已有可直接开始的任务，先完成这一条最顺畅。",
+      ...(countSummary ? { countSummary } : {}),
       focusSummary: toFocusSummary(deliveredTask.content.focusReviewWords),
       coachHint: String(deliveredTask.content.coachHint ?? "").trim(),
       actionLabel: "开始学习",
@@ -51,9 +56,11 @@ export function buildTaskRecommendation(tasks: TaskLike[]): TaskRecommendation |
 
   const deliverableTask = tasks.find((task) => task.status === "APPROVED" || task.status === "MODIFIED");
   if (deliverableTask) {
+    const countSummary = toCountSummary(deliverableTask.content);
     return {
       title: "推荐下一步：投递后开始学习",
       description: "当前没有已投递任务，可以先投递这条任务并立即开始。",
+      ...(countSummary ? { countSummary } : {}),
       focusSummary: "",
       coachHint: "",
       actionLabel: "投递并开始",
@@ -64,6 +71,25 @@ export function buildTaskRecommendation(tasks: TaskLike[]): TaskRecommendation |
   }
 
   return null;
+}
+
+function toCountSummary(content: Record<string, unknown>): string | undefined {
+  const mode = String(content.mode ?? "").trim();
+  if (mode !== "word_learning" && mode !== "word_review") {
+    return undefined;
+  }
+  if (content.dueWords === undefined && content.newWords === undefined) {
+    return undefined;
+  }
+
+  const dueWords = toCount(content.dueWords);
+  const newWords = toCount(content.newWords);
+  return `复习 ${dueWords} 个，新增 ${newWords} 个`;
+}
+
+function toCount(value: unknown): number {
+  const count = Number(value);
+  return Number.isFinite(count) && count >= 0 ? count : 0;
 }
 
 function toFocusSummary(value: unknown): string {
