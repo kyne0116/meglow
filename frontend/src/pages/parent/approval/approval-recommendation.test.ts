@@ -33,8 +33,36 @@ test("buildApprovalRecommendation prefers focus review push for modify flow", ()
     pushId: "push-review",
     title: "推荐处理：先确认重点复习任务",
     description: "这条待审批任务带有重点复习词，建议先检查后再通过或调整。",
-    actionLabel: "套用预设修改",
-    actionType: "OPEN_MODIFY"
+    actionLabel: "套用强化发音预设",
+    actionType: "APPLY_PRESET",
+    presetId: "focus_pronunciation"
+  });
+});
+
+test("buildApprovalRecommendation falls back to focus review preset when no pronunciation weakness exists", () => {
+  const result = buildApprovalRecommendation([
+    {
+      id: "push-review",
+      childName: "Ming",
+      summary: "复习任务",
+      reason: "need review",
+      expectedOutcome: "review words",
+      status: "PENDING_APPROVAL",
+      scheduledAt: "2026-03-17T10:00:00.000Z",
+      content: {
+        mode: "word_review",
+        focusReviewWords: [{ word: "banana", incorrectItems: ["WORD_SPELLING"] }]
+      }
+    }
+  ]);
+
+  assert.deepEqual(result, {
+    pushId: "push-review",
+    title: "推荐处理：先确认重点复习任务",
+    description: "这条待审批任务带有重点复习词，建议先检查后再通过或调整。",
+    actionLabel: "套用重点复习预设",
+    actionType: "APPLY_PRESET",
+    presetId: "focus_review"
   });
 });
 

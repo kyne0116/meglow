@@ -278,8 +278,12 @@ function handleApprovalRecommendation(): void {
     return;
   }
 
-  if (approvalRecommendation.value.actionType === "OPEN_MODIFY") {
+  if (approvalRecommendation.value.actionType === "APPLY_PRESET") {
     startModify(target);
+    const preset = currentAdjustmentPresets.value.find((item) => item.id === approvalRecommendation.value?.presetId);
+    if (preset) {
+      applyAdjustmentPreset(preset);
+    }
     return;
   }
 

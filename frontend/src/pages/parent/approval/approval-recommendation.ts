@@ -8,7 +8,8 @@ export interface ApprovalRecommendation {
   title: string;
   description: string;
   actionLabel: string;
-  actionType: "OPEN_MODIFY" | "APPROVE";
+  actionType: "APPLY_PRESET" | "APPROVE";
+  presetId?: "focus_review" | "focus_pronunciation";
 }
 
 export function buildApprovalRecommendation(pending: PendingPushLike[]): ApprovalRecommendation | null {
@@ -16,12 +17,20 @@ export function buildApprovalRecommendation(pending: PendingPushLike[]): Approva
     (item) => Array.isArray(item.content.focusReviewWords) && item.content.focusReviewWords.length > 0
   );
   if (focusReviewPush) {
+    const hasPronunciationWeakness = (focusReviewPush.content.focusReviewWords as unknown[]).some((entry) => {
+      if (!entry || typeof entry !== "object") {
+        return false;
+      }
+      const incorrectItems = (entry as { incorrectItems?: unknown }).incorrectItems;
+      return Array.isArray(incorrectItems) && incorrectItems.some((item) => String(item).trim() === "WORD_PRONUNCIATION");
+    });
     return {
       pushId: focusReviewPush.id,
       title: "推荐处理：先确认重点复习任务",
       description: "这条待审批任务带有重点复习词，建议先检查后再通过或调整。",
-      actionLabel: "套用预设修改",
-      actionType: "OPEN_MODIFY"
+      actionLabel: hasPronunciationWeakness ? "套用强化发音预设" : "套用重点复习预设",
+      actionType: "APPLY_PRESET",
+      presetId: hasPronunciationWeakness ? "focus_pronunciation" : "focus_review"
     };
   }
 
