@@ -370,7 +370,8 @@ async function loadSummaryNextStep(needsReviewWordCount: number): Promise<Summar
     return buildSummaryNextStep(tasks as ChildTask[], {
       currentTaskId: session.value.taskId,
       needsReviewWordCount,
-      pendingPushSummary: nextPendingPush?.summary
+      pendingPushSummary: nextPendingPush?.summary,
+      pendingPushScheduledAt: nextPendingPush?.scheduledAt
     });
   } catch {
     return fallback;

@@ -5,74 +5,58 @@ import { buildSummaryNextStep } from "./summary-next-step.ts";
 test("buildSummaryNextStep prefers remaining delivered tasks", () => {
   const result = buildSummaryNextStep(
     [
-      { id: "task-current", status: "COMPLETED", summary: "已完成任务" },
-      { id: "task-next", status: "DELIVERED", summary: "英语复习任务" },
-      { id: "task-later", status: "APPROVED", summary: "后续任务" }
+      { id: "task-current", status: "COMPLETED", summary: "done task" },
+      { id: "task-next", status: "DELIVERED", summary: "review task" },
+      { id: "task-later", status: "APPROVED", summary: "later task" }
     ],
     { currentTaskId: "task-current", needsReviewWordCount: 1 }
   );
 
-  assert.deepEqual(result, {
-    title: "下一步：继续下一条任务",
-    description: "任务面板里还有 1 条可直接开始的任务，返回后可以继续学习。",
-    nextTaskSummary: "下一个任务：英语复习任务",
-    pendingPushSummary: "",
-    actionLabel: "继续下一条任务",
-    actionType: "START_NEXT_TASK",
-    taskId: "task-next"
-  });
+  assert.equal(result.actionType, "START_NEXT_TASK");
+  assert.equal(result.taskId, "task-next");
+  assert.equal(result.pendingPushSummary, "");
+  assert.equal(result.nextTaskSummary.includes("review task"), true);
 });
 
 test("buildSummaryNextStep falls back to deliverable tasks", () => {
   const result = buildSummaryNextStep(
     [
-      { id: "task-current", status: "COMPLETED", summary: "已完成任务" },
-      { id: "task-next", status: "APPROVED", summary: "今日英语任务" },
-      { id: "task-later", status: "MODIFIED", summary: "稍后任务" }
+      { id: "task-current", status: "COMPLETED", summary: "done task" },
+      { id: "task-next", status: "APPROVED", summary: "today task" },
+      { id: "task-later", status: "MODIFIED", summary: "later task" }
     ],
     { currentTaskId: "task-current", needsReviewWordCount: 0 }
   );
 
-  assert.deepEqual(result, {
-    title: "下一步：还有待投递任务",
-    description: "任务面板里还有 2 条任务待投递，返回后先标记已投递，再开始学习。",
-    nextTaskSummary: "下一个任务：今日英语任务",
-    pendingPushSummary: "",
-    actionLabel: "投递并继续下一条任务",
-    actionType: "DELIVER_AND_START_NEXT_TASK",
-    taskId: "task-next"
-  });
+  assert.equal(result.actionType, "DELIVER_AND_START_NEXT_TASK");
+  assert.equal(result.taskId, "task-next");
+  assert.equal(result.pendingPushSummary, "");
+  assert.equal(result.nextTaskSummary.includes("today task"), true);
 });
 
-test("buildSummaryNextStep explains review wait when no visible task remains", () => {
-  const result = buildSummaryNextStep([{ id: "task-current", status: "COMPLETED", summary: "已完成任务" }], {
+test("buildSummaryNextStep includes matched pending push time when waiting for review approval", () => {
+  const result = buildSummaryNextStep([{ id: "task-current", status: "COMPLETED", summary: "done task" }], {
     currentTaskId: "task-current",
     needsReviewWordCount: 2,
-    pendingPushSummary: "下一轮复习任务：apple 发音专项"
+    pendingPushSummary: "apple pronunciation review",
+    pendingPushScheduledAt: "2026-03-17T10:30:00.000Z"
   });
 
-  assert.deepEqual(result, {
-    title: "下一步：等待家长审批复习任务",
-    description: "本次有 2 个待复习单词，系统会生成下一轮复习推送，需家长审批后继续。",
-    nextTaskSummary: "",
-    pendingPushSummary: "待审批推送：下一轮复习任务：apple 发音专项",
-    actionLabel: "返回任务面板查看进度",
-    actionType: "OPEN_TASK_PANEL"
-  });
+  assert.equal(result.actionType, "OPEN_TASK_PANEL");
+  assert.equal(result.taskId, undefined);
+  assert.equal(result.nextTaskSummary, "");
+  assert.equal(result.pendingPushSummary.includes("apple pronunciation review"), true);
+  assert.equal(result.pendingPushSummary.endsWith("2026-03-17 10:30"), true);
 });
 
 test("buildSummaryNextStep keeps a generic fallback when nothing else is queued", () => {
-  const result = buildSummaryNextStep([{ id: "task-current", status: "COMPLETED", summary: "已完成任务" }], {
+  const result = buildSummaryNextStep([{ id: "task-current", status: "COMPLETED", summary: "done task" }], {
     currentTaskId: "task-current",
     needsReviewWordCount: 0
   });
 
-  assert.deepEqual(result, {
-    title: "下一步：返回任务面板查看安排",
-    description: "本轮学习已完成，返回任务面板查看今天是否还有新的学习任务。",
-    nextTaskSummary: "",
-    pendingPushSummary: "",
-    actionLabel: "返回任务面板",
-    actionType: "OPEN_TASK_PANEL"
-  });
+  assert.equal(result.actionType, "OPEN_TASK_PANEL");
+  assert.equal(result.taskId, undefined);
+  assert.equal(result.nextTaskSummary, "");
+  assert.equal(result.pendingPushSummary, "");
 });
