@@ -4,6 +4,7 @@ interface TaskLike {
   id: string;
   status: TaskStatus;
   summary: string;
+  scheduledAt?: string;
 }
 
 interface SummaryNextStepOptions {
@@ -32,7 +33,7 @@ export function buildSummaryNextStep(tasks: TaskLike[], options: SummaryNextStep
     return {
       title: "下一步：继续下一条任务",
       description: `任务面板里还有 ${nextLearnableTasks.length} 条可直接开始的任务，返回后可以继续学习。`,
-      nextTaskSummary: `下一个任务：${nextLearnableTask.summary}`,
+      nextTaskSummary: buildNextTaskSummary(nextLearnableTask.summary, nextLearnableTask.scheduledAt),
       pendingPushSummary: "",
       actionLabel: "继续下一条任务",
       actionType: "START_NEXT_TASK",
@@ -46,7 +47,7 @@ export function buildSummaryNextStep(tasks: TaskLike[], options: SummaryNextStep
     return {
       title: "下一步：还有待投递任务",
       description: `任务面板里还有 ${deliverableTasks.length} 条任务待投递，返回后先标记已投递，再开始学习。`,
-      nextTaskSummary: `下一个任务：${nextDeliverableTask.summary}`,
+      nextTaskSummary: buildNextTaskSummary(nextDeliverableTask.summary, nextDeliverableTask.scheduledAt),
       pendingPushSummary: "",
       actionLabel: "投递并继续下一条任务",
       actionType: "DELIVER_AND_START_NEXT_TASK",
@@ -73,6 +74,15 @@ export function buildSummaryNextStep(tasks: TaskLike[], options: SummaryNextStep
     actionLabel: "返回任务面板",
     actionType: "OPEN_TASK_PANEL"
   };
+}
+
+function buildNextTaskSummary(summary: string, scheduledAt?: string): string {
+  const formattedTime = formatScheduledAt(scheduledAt);
+  if (!formattedTime) {
+    return `下一个任务：${summary}`;
+  }
+
+  return `下一个任务：${summary}，计划时间：${formattedTime}`;
 }
 
 function buildPendingPushSummary(summary?: string, scheduledAt?: string): string {
