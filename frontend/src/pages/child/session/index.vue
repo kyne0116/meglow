@@ -31,6 +31,7 @@
         <view class="summary-title">{{ summaryNextStep.title }}</view>
         <view class="line">{{ summaryNextStep.description }}</view>
         <view v-if="summaryNextStep.nextTaskSummary" class="line">{{ summaryNextStep.nextTaskSummary }}</view>
+        <view v-if="summaryNextStep.nextTaskInsight" class="line">{{ summaryNextStep.nextTaskInsight }}</view>
         <view v-if="summaryNextStep.pendingPushSummary" class="line">{{ summaryNextStep.pendingPushSummary }}</view>
       </view>
 
