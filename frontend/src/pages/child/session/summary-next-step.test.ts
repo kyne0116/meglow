@@ -16,7 +16,7 @@ test("buildSummaryNextStep prefers remaining delivered tasks and includes next t
   assert.equal(result.taskId, "task-next");
   assert.equal(result.pendingPushSummary, "");
   assert.equal(result.nextTaskSummary.includes("review task"), true);
-  assert.equal(result.nextTaskSummary.includes("2026-03-17 09:30"), true);
+  assert.equal(result.nextTaskSummary.includes("2026-03-17 17:30"), true);
 });
 
 test("buildSummaryNextStep falls back to deliverable tasks and includes next task schedule", () => {
@@ -33,7 +33,7 @@ test("buildSummaryNextStep falls back to deliverable tasks and includes next tas
   assert.equal(result.taskId, "task-next");
   assert.equal(result.pendingPushSummary, "");
   assert.equal(result.nextTaskSummary.includes("today task"), true);
-  assert.equal(result.nextTaskSummary.includes("2026-03-17 10:30"), true);
+  assert.equal(result.nextTaskSummary.includes("2026-03-17 18:30"), true);
 });
 
 test("buildSummaryNextStep includes matched pending push time when waiting for review approval", () => {
@@ -48,7 +48,7 @@ test("buildSummaryNextStep includes matched pending push time when waiting for r
   assert.equal(result.taskId, undefined);
   assert.equal(result.nextTaskSummary, "");
   assert.equal(result.pendingPushSummary.includes("apple pronunciation review"), true);
-  assert.equal(result.pendingPushSummary.endsWith("2026-03-17 10:30"), true);
+  assert.equal(result.pendingPushSummary.endsWith("2026-03-17 18:30"), true);
 });
 
 test("buildSummaryNextStep keeps a generic fallback when nothing else is queued", () => {

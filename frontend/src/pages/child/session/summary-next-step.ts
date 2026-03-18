@@ -103,9 +103,16 @@ function formatScheduledAt(value?: string): string {
     return "";
   }
 
-  if (value.includes("T")) {
-    return value.slice(0, 16).replace("T", " ");
+  const date = new Date(value);
+  if (!Number.isNaN(date.getTime())) {
+    return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())} ${pad2(
+      date.getHours()
+    )}:${pad2(date.getMinutes())}`;
   }
 
   return value;
+}
+
+function pad2(value: number): string {
+  return String(value).padStart(2, "0");
 }
