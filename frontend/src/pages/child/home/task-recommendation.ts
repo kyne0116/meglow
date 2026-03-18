@@ -11,6 +11,8 @@ interface TaskLike {
 export interface TaskRecommendation {
   title: string;
   description: string;
+  modeLabel: string;
+  priorityLabel: string;
   countSummary?: string;
   scheduledTimeLabel: string;
   focusSummary: string;
@@ -65,6 +67,8 @@ function buildRecommendation(
   const countSummary = toCountSummary(task.content);
   return {
     ...options,
+    modeLabel: toModeLabel(task.content),
+    priorityLabel: toPriorityLabel(task.content.priority),
     ...(countSummary ? { countSummary } : {}),
     scheduledTimeLabel: formatScheduledTime(task.scheduledAt),
     focusSummary: toFocusSummary(task.content.focusReviewWords),
@@ -92,6 +96,21 @@ function formatScheduledTime(value?: string): string {
 
 function pad2(value: number): string {
   return String(value).padStart(2, "0");
+}
+
+function toModeLabel(content: Record<string, unknown>): string {
+  const mode = String(content.mode ?? "").trim();
+  if (mode === "word_learning" || mode === "word_review") {
+    return "英语单词任务";
+  }
+  if (mode === "textbook_content_review") {
+    return "教材内容任务";
+  }
+  return "";
+}
+
+function toPriorityLabel(value: unknown): string {
+  return String(value ?? "").trim().toLowerCase() === "high" ? "高优先级" : "常规";
 }
 
 function toCountSummary(content: Record<string, unknown>): string | undefined {

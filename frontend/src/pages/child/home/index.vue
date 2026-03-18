@@ -35,6 +35,9 @@
         <view class="task-title">{{ taskRecommendation.title }}</view>
         <view class="line">{{ taskRecommendation.summary }}</view>
         <view class="line">{{ taskRecommendation.description }}</view>
+        <view v-if="taskRecommendation.modeLabel || taskRecommendation.priorityLabel" class="line">
+          {{ [taskRecommendation.modeLabel, taskRecommendation.priorityLabel].filter(Boolean).join(" · ") }}
+        </view>
         <view v-if="taskRecommendation.countSummary" class="line">任务要点：{{ taskRecommendation.countSummary }}</view>
         <view v-if="taskRecommendation.scheduledTimeLabel" class="line">
           计划时间：{{ taskRecommendation.scheduledTimeLabel }}
