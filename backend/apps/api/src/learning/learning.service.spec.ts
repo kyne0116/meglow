@@ -134,7 +134,8 @@ describe('LearningService pronunciation evaluation', () => {
     const result = serviceAccess.buildTaskOverview(
       'today english practice',
       {
-        mode: 'word_learning',
+        mode: 'word_review',
+        adjustmentMode: 'focus_pronunciation_mode',
         dueWords: 2,
         newWords: 1,
         coachHint: 'review due words first, then unlock new ones',
@@ -151,7 +152,8 @@ describe('LearningService pronunciation evaluation', () => {
       summary: 'today english practice',
       focusSummary: 'review 2 due words and add 1 new words',
       coachHint: 'review due words first, then unlock new ones',
-      insightSummary: 'English word task · High priority · Review 2 words, add 1 words',
+      insightSummary:
+        'Pronunciation review task · High priority · Review 2 words, add 1 words',
       previewWords: ['apple (review)', 'banana (new)', 'pear (review)'],
     });
   });

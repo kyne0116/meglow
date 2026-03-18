@@ -4,7 +4,8 @@ import { buildApprovalInsight } from "./approval-insights.ts";
 
 test("buildApprovalInsight extracts focus review summary, priority, and preview for english push", () => {
   const result = buildApprovalInsight({
-    mode: "word_learning",
+    mode: "word_review",
+    adjustmentMode: "focus_pronunciation_mode",
     priority: "high",
     dueWords: 2,
     newWords: 1,
@@ -26,7 +27,7 @@ test("buildApprovalInsight extracts focus review summary, priority, and preview 
   });
 
   assert.deepEqual(result, {
-    modeLabel: "英语单词任务",
+    modeLabel: "发音复习任务",
     priorityLabel: "高优先级",
     countSummary: "复习 2 个，新增 1 个",
     previewWords: ["apple（复习）", "banana（新词）"],

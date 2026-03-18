@@ -9,10 +9,16 @@ export interface ApprovalInsight {
 
 export function buildApprovalInsight(content: Record<string, unknown>): ApprovalInsight | null {
   const mode = String(content.mode ?? "").trim();
+  const adjustmentMode = String(content.adjustmentMode ?? "").trim();
 
   if (mode === "word_learning" || mode === "word_review") {
     return {
-      modeLabel: "英语单词任务",
+      modeLabel:
+        mode === "word_review" && adjustmentMode === "focus_pronunciation_mode"
+          ? "发音复习任务"
+          : mode === "word_review"
+            ? "重点复习任务"
+            : "英语单词任务",
       priorityLabel: toPriorityLabel(content.priority),
       countSummary: `复习 ${toCount(content.dueWords)} 个，新增 ${toCount(content.newWords)} 个`,
       previewWords: toPreviewWords(content.words),

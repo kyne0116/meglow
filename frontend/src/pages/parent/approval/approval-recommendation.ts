@@ -84,7 +84,14 @@ export function buildApprovalRecommendation(pending: PendingPushLike[]): Approva
 
 function toModeLabel(content: Record<string, unknown>): string {
   const mode = String(content.mode ?? "").trim();
-  if (mode === "word_learning" || mode === "word_review") {
+  const adjustmentMode = String(content.adjustmentMode ?? "").trim();
+  if (mode === "word_review" && adjustmentMode === "focus_pronunciation_mode") {
+    return "发音复习任务";
+  }
+  if (mode === "word_review") {
+    return "重点复习任务";
+  }
+  if (mode === "word_learning") {
     return "英语单词任务";
   }
   if (mode === "textbook_content_review") {

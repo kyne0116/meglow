@@ -914,7 +914,13 @@ export class LearningService {
         focusSummary: `review ${dueWords} due words and add ${newWords} new words`,
         coachHint,
         insightSummary: [
-          'English word task',
+          mode === 'word_review' &&
+          String(taskContent.adjustmentMode ?? '').trim() ===
+            'focus_pronunciation_mode'
+            ? 'Pronunciation review task'
+            : mode === 'word_review'
+              ? 'Focused review task'
+              : 'English word task',
           this.toPriorityLabel(taskContent.priority),
           `Review ${dueWords} words, add ${newWords} words`,
         ]

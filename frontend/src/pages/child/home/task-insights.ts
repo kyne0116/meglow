@@ -9,6 +9,7 @@ export interface TaskInsight {
 
 export function buildTaskInsight(content: Record<string, unknown>): TaskInsight | null {
   const mode = String(content.mode ?? "").trim();
+  const adjustmentMode = String(content.adjustmentMode ?? "").trim();
 
   if (mode === "word_learning" || mode === "word_review") {
     const dueWords = toCount(content.dueWords);
@@ -27,7 +28,12 @@ export function buildTaskInsight(content: Record<string, unknown>): TaskInsight 
       : [];
 
     return {
-      modeLabel: "英语单词任务",
+      modeLabel:
+        mode === "word_review" && adjustmentMode === "focus_pronunciation_mode"
+          ? "发音复习任务"
+          : mode === "word_review"
+            ? "重点复习任务"
+            : "英语单词任务",
       countSummary: `复习 ${dueWords} 个，新增 ${newWords} 个`,
       coachHint: String(content.coachHint ?? "").trim(),
       priorityLabel: toPriorityLabel(content.priority),

@@ -19,6 +19,7 @@ test("buildSummaryNextStep prefers remaining delivered tasks and includes next t
         scheduledAt: "2026-03-17T09:30:00.000Z",
         content: {
           mode: "word_review",
+          adjustmentMode: "focus_pronunciation_mode",
           priority: "high",
           dueWords: 2,
           newWords: 1,
@@ -44,7 +45,7 @@ test("buildSummaryNextStep prefers remaining delivered tasks and includes next t
   assert.equal(result.pendingPushSummary, "");
   assert.equal(result.nextTaskSummary.includes("review task"), true);
   assert.equal(result.nextTaskSummary.includes("2026-03-17 17:30"), true);
-  assert.equal(result.nextTaskInsight, "英语单词任务 · 高优先级 · 复习 2 个，新增 1 个");
+  assert.equal(result.nextTaskInsight, "发音复习任务 · 高优先级 · 复习 2 个，新增 1 个");
   assert.equal(result.nextTaskCoachHint, "");
   assert.equal(result.nextTaskPreviewWords, "apple（复习）、banana（新词）");
 });
@@ -115,6 +116,7 @@ test("buildSummaryNextStep includes matched pending push time when waiting for r
       pendingPushScheduledAt: "2026-03-17T10:30:00.000Z",
       pendingPushContent: {
         mode: "word_review",
+        adjustmentMode: "focus_pronunciation_mode",
         priority: "high",
         dueWords: 2,
         newWords: 0,
@@ -136,7 +138,7 @@ test("buildSummaryNextStep includes matched pending push time when waiting for r
   assert.equal(result.nextTaskPreviewWords, "");
   assert.equal(result.pendingPushSummary.includes("apple pronunciation review"), true);
   assert.equal(result.pendingPushSummary.endsWith("2026-03-17 18:30"), true);
-  assert.equal(result.pendingPushInsight, "英语单词任务 · 高优先级 · 复习 2 个，新增 0 个");
+  assert.equal(result.pendingPushInsight, "发音复习任务 · 高优先级 · 复习 2 个，新增 0 个");
   assert.equal(result.pendingPushFocusReviewSummary, "重点复习：apple（朗读题）");
   assert.equal(result.pendingPushCoachHint, "start with apple pronunciation before new words");
   assert.equal(result.pendingPushPreviewWords, "apple（复习）、banana（复习）");

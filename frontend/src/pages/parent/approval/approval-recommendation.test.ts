@@ -12,6 +12,7 @@ test("buildApprovalRecommendation prefers focus review push and carries child an
       scheduledAt: "2026-03-17T10:00:00.000Z",
       content: {
         mode: "word_review",
+        adjustmentMode: "focus_pronunciation_mode",
         priority: "high",
         dueWords: 2,
         newWords: 1,
@@ -34,7 +35,7 @@ test("buildApprovalRecommendation prefers focus review push and carries child an
 
   assert.equal(result?.pushId, "push-review");
   assert.equal(result?.childName, "Ming");
-  assert.equal(result?.modeLabel, "英语单词任务");
+  assert.equal(result?.modeLabel, "发音复习任务");
   assert.equal(result?.priorityLabel, "高优先级");
   assert.equal(result?.countSummary, "复习 2 个，新增 1 个");
   assert.deepEqual(result?.previewWords, ["apple（复习）", "banana（新词）"]);
@@ -57,6 +58,7 @@ test("buildApprovalRecommendation falls back to focus review preset when no pron
       scheduledAt: "2026-03-17T11:30:00.000Z",
       content: {
         mode: "word_review",
+        adjustmentMode: "normal_review_mode",
         dueWords: 1,
         newWords: 0,
         coachHint: "spell banana twice",
@@ -67,7 +69,7 @@ test("buildApprovalRecommendation falls back to focus review preset when no pron
 
   assert.equal(result?.pushId, "push-review");
   assert.equal(result?.childName, "Ming");
-  assert.equal(result?.modeLabel, "英语单词任务");
+  assert.equal(result?.modeLabel, "重点复习任务");
   assert.equal(result?.priorityLabel, "常规");
   assert.equal(result?.countSummary, "复习 1 个，新增 0 个");
   assert.deepEqual(result?.previewWords, []);

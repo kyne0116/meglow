@@ -974,6 +974,11 @@ describe('Meglow business flow (e2e)', () => {
       .expect(200);
 
     expect(nextPendingPushesResponse.body).toHaveLength(1);
+    expect(nextPendingPushesResponse.body[0].summary).toContain('pronunciation review');
+    expect(nextPendingPushesResponse.body[0].content.mode).toBe('word_review');
+    expect(nextPendingPushesResponse.body[0].content.adjustmentMode).toBe(
+      'focus_pronunciation_mode',
+    );
     expect(nextPendingPushesResponse.body[0].content.focusReviewWords).toEqual([
       expect.objectContaining({
         word: firstPronunciationWord,

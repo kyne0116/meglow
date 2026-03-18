@@ -4,7 +4,8 @@ import { buildTaskInsight } from "./task-insights.ts";
 
 test("buildTaskInsight parses english task details", () => {
   const result = buildTaskInsight({
-    mode: "word_learning",
+    mode: "word_review",
+    adjustmentMode: "focus_pronunciation_mode",
     dueWords: 2,
     newWords: 1,
     coachHint: "review due words first, then unlock new ones",
@@ -22,7 +23,7 @@ test("buildTaskInsight parses english task details", () => {
   });
 
   assert.deepEqual(result, {
-    modeLabel: "英语单词任务",
+    modeLabel: "发音复习任务",
     countSummary: "复习 2 个，新增 1 个",
     coachHint: "review due words first, then unlock new ones",
     priorityLabel: "高优先级",

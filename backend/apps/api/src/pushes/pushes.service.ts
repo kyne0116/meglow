@@ -477,8 +477,12 @@ export class PushesService {
       meaningZh: item.meaningZh,
       incorrectItems: item.incorrectItems,
     }));
-    const reviewFocusReason =
-      focusReviewWords.length > 0
+    const isPronunciationReview =
+      reviewContext.primaryWeakSkill === 'pronunciation' && focusReviewWords.length > 0;
+    const isFocusedReview = focusReviewWords.length > 0;
+    const reviewFocusReason = isPronunciationReview
+      ? `Fix pronunciation for ${focusReviewWords.map((item) => item.word).join(', ')} first`
+      : focusReviewWords.length > 0
         ? `Revisit ${focusReviewWords.map((item) => item.word).join(', ')} first`
         : null;
     const coachHint =
@@ -493,20 +497,33 @@ export class PushesService {
     const createdPush = await this.prismaService.learningPush.create({
       data: {
         childId,
-        summary: `${childName} english practice task`,
+        summary: isPronunciationReview
+          ? `${childName} english pronunciation review task`
+          : isFocusedReview
+            ? `${childName} english review task`
+            : `${childName} english practice task`,
         reason:
           reviewFocusReason ??
           (dueWords > 0
             ? `Review ${dueWords} due words and add ${newWords} new words`
             : `Start ${newWords} new words for today's practice`),
         expectedOutcome:
-          focusReviewWords.length > 0
-            ? `Fix the recent weak spots and finish ${prioritizedWords.length} words practice`
+          isPronunciationReview
+            ? `Fix pronunciation weak spots and finish ${prioritizedWords.length} words review`
+            : focusReviewWords.length > 0
+              ? `Fix the recent weak spots and finish ${prioritizedWords.length} words practice`
             : `Finish ${prioritizedWords.length} words meaning and spelling practice`,
         status,
         scheduledAt: new Date(),
         contentJson: {
-          mode: 'word_learning',
+          mode: isFocusedReview ? 'word_review' : 'word_learning',
+          ...(isFocusedReview
+            ? {
+                adjustmentMode: isPronunciationReview
+                  ? 'focus_pronunciation_mode'
+                  : 'normal_review_mode',
+              }
+            : {}),
           dueWords,
           newWords,
           words: prioritizedWords.map((word) => ({
