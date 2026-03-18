@@ -41,6 +41,7 @@ test("buildSummaryNextStep prefers remaining delivered tasks and includes next t
   assert.equal(result.nextTaskSummary.includes("review task"), true);
   assert.equal(result.nextTaskSummary.includes("2026-03-17 17:30"), true);
   assert.equal(result.nextTaskInsight, "英语单词任务 · 高优先级 · 复习 2 个，新增 1 个");
+  assert.equal(result.nextTaskCoachHint, "");
 });
 
 test("buildSummaryNextStep falls back to deliverable tasks and includes next task insight", () => {
@@ -61,7 +62,8 @@ test("buildSummaryNextStep falls back to deliverable tasks and includes next tas
         content: {
           mode: "word_learning",
           dueWords: 3,
-          newWords: 2
+          newWords: 2,
+          coachHint: "finish review words before new words"
         }
       },
       {
@@ -81,6 +83,7 @@ test("buildSummaryNextStep falls back to deliverable tasks and includes next tas
   assert.equal(result.nextTaskSummary.includes("today task"), true);
   assert.equal(result.nextTaskSummary.includes("2026-03-17 18:30"), true);
   assert.equal(result.nextTaskInsight, "英语单词任务 · 常规 · 复习 3 个，新增 2 个");
+  assert.equal(result.nextTaskCoachHint, "finish review words before new words");
 });
 
 test("buildSummaryNextStep includes matched pending push time when waiting for review approval", () => {
@@ -106,6 +109,7 @@ test("buildSummaryNextStep includes matched pending push time when waiting for r
   assert.equal(result.taskId, undefined);
   assert.equal(result.nextTaskSummary, "");
   assert.equal(result.nextTaskInsight, "");
+  assert.equal(result.nextTaskCoachHint, "");
   assert.equal(result.pendingPushSummary.includes("apple pronunciation review"), true);
   assert.equal(result.pendingPushSummary.endsWith("2026-03-17 18:30"), true);
 });
@@ -131,5 +135,6 @@ test("buildSummaryNextStep keeps a generic fallback when nothing else is queued"
   assert.equal(result.taskId, undefined);
   assert.equal(result.nextTaskSummary, "");
   assert.equal(result.nextTaskInsight, "");
+  assert.equal(result.nextTaskCoachHint, "");
   assert.equal(result.pendingPushSummary, "");
 });

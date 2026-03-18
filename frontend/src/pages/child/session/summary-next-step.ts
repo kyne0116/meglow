@@ -20,6 +20,7 @@ export interface SummaryNextStep {
   description: string;
   nextTaskSummary: string;
   nextTaskInsight: string;
+  nextTaskCoachHint: string;
   pendingPushSummary: string;
   actionLabel: string;
   actionType: "START_NEXT_TASK" | "DELIVER_AND_START_NEXT_TASK" | "OPEN_TASK_PANEL";
@@ -37,6 +38,7 @@ export function buildSummaryNextStep(tasks: TaskLike[], options: SummaryNextStep
       description: `任务面板里还有 ${nextLearnableTasks.length} 条可直接开始的任务，返回后可以继续学习。`,
       nextTaskSummary: buildNextTaskSummary(nextLearnableTask.summary, nextLearnableTask.scheduledAt),
       nextTaskInsight: buildNextTaskInsight(nextLearnableTask.content),
+      nextTaskCoachHint: String(nextLearnableTask.content.coachHint ?? "").trim(),
       pendingPushSummary: "",
       actionLabel: "继续下一条任务",
       actionType: "START_NEXT_TASK",
@@ -52,6 +54,7 @@ export function buildSummaryNextStep(tasks: TaskLike[], options: SummaryNextStep
       description: `任务面板里还有 ${deliverableTasks.length} 条任务待投递，返回后先标记已投递，再开始学习。`,
       nextTaskSummary: buildNextTaskSummary(nextDeliverableTask.summary, nextDeliverableTask.scheduledAt),
       nextTaskInsight: buildNextTaskInsight(nextDeliverableTask.content),
+      nextTaskCoachHint: String(nextDeliverableTask.content.coachHint ?? "").trim(),
       pendingPushSummary: "",
       actionLabel: "投递并继续下一条任务",
       actionType: "DELIVER_AND_START_NEXT_TASK",
@@ -65,6 +68,7 @@ export function buildSummaryNextStep(tasks: TaskLike[], options: SummaryNextStep
       description: `本次有 ${options.needsReviewWordCount} 个待复习单词，系统会生成下一轮复习推送，需要家长审批后继续。`,
       nextTaskSummary: "",
       nextTaskInsight: "",
+      nextTaskCoachHint: "",
       pendingPushSummary: buildPendingPushSummary(options.pendingPushSummary, options.pendingPushScheduledAt),
       actionLabel: "返回任务面板查看进度",
       actionType: "OPEN_TASK_PANEL"
@@ -76,6 +80,7 @@ export function buildSummaryNextStep(tasks: TaskLike[], options: SummaryNextStep
     description: "本轮学习已完成，返回任务面板查看今天是否还有新的学习任务。",
     nextTaskSummary: "",
     nextTaskInsight: "",
+    nextTaskCoachHint: "",
     pendingPushSummary: "",
     actionLabel: "返回任务面板",
     actionType: "OPEN_TASK_PANEL"
