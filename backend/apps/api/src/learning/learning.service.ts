@@ -63,6 +63,8 @@ type TaskOverviewRecord = {
   summary: string;
   focusSummary: string | null;
   coachHint: string | null;
+  insightSummary: string | null;
+  previewWords: string[];
 };
 
 export interface LearningSessionRecord {
@@ -416,6 +418,7 @@ export class LearningService {
             promptJson: {
               word: word.value,
               phonetic: word.phonetic,
+              exampleSentence: word.exampleSentence,
               options,
               kind: word.kind,
             },
@@ -434,6 +437,7 @@ export class LearningService {
             promptJson: {
               meaningZh: word.meaningZh,
               phonetic: word.phonetic,
+              exampleSentence: word.exampleSentence,
               hint: `${word.value.slice(0, 1)}***`,
               wordLength: word.value.length,
               kind: word.kind,
@@ -909,6 +913,14 @@ export class LearningService {
         summary,
         focusSummary: `review ${dueWords} due words and add ${newWords} new words`,
         coachHint,
+        insightSummary: [
+          'English word task',
+          this.toPriorityLabel(taskContent.priority),
+          `Review ${dueWords} words, add ${newWords} words`,
+        ]
+          .filter(Boolean)
+          .join(' · '),
+        previewWords: this.toPreviewWords(taskContent.words),
       };
     }
 
@@ -920,6 +932,10 @@ export class LearningService {
         summary,
         focusSummary: `${subjectName} / ${nodeTitle} / ${totalContentItems} content items`,
         coachHint,
+        insightSummary: ['Textbook content task', this.toPriorityLabel(taskContent.priority)]
+          .filter(Boolean)
+          .join(' · '),
+        previewWords: [],
       };
     }
 
@@ -927,7 +943,35 @@ export class LearningService {
       summary,
       focusSummary: null,
       coachHint,
+      insightSummary: null,
+      previewWords: [],
     };
+  }
+
+  private toPriorityLabel(value: unknown): string {
+    return String(value ?? '').trim().toLowerCase() === 'high'
+      ? 'High priority'
+      : 'Regular';
+  }
+
+  private toPreviewWords(value: unknown): string[] {
+    if (!Array.isArray(value)) {
+      return [];
+    }
+
+    return value
+      .filter(
+        (item): item is Record<string, unknown> =>
+          typeof item === 'object' && item !== null,
+      )
+      .slice(0, 3)
+      .map((item) => {
+        const word = this.readString(item.value) ?? '';
+        const kind = String(item.kind ?? '').trim().toUpperCase();
+        const kindLabel = kind === 'REVIEW' ? 'review' : 'new';
+        return word ? `${word} (${kindLabel})` : '';
+      })
+      .filter(Boolean);
   }
 
   private evaluateAnswer(

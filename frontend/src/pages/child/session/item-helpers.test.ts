@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   buildPronunciationAnswer,
-  getLearningItemTypeLabel
+  getLearningItemTypeLabel,
+  readPromptExampleSentence
 } from "./item-helpers.ts";
 
 test("getLearningItemTypeLabel returns pronunciation label", () => {
@@ -25,4 +26,15 @@ test("buildPronunciationAnswer defaults to ok self rating", () => {
     completed: true,
     selfRating: "OK"
   });
+});
+
+test("readPromptExampleSentence returns trimmed example sentence", () => {
+  assert.equal(
+    readPromptExampleSentence({ exampleSentence: "  I read in the library.  " }),
+    "I read in the library."
+  );
+});
+
+test("readPromptExampleSentence returns empty string when example sentence is missing", () => {
+  assert.equal(readPromptExampleSentence({}), "");
 });

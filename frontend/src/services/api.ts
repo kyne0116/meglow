@@ -123,6 +123,8 @@ export interface LearningSession {
     summary: string;
     focusSummary: string | null;
     coachHint: string | null;
+    insightSummary: string | null;
+    previewWords: string[];
   } | null;
   items: LearningSessionItem[];
 }

@@ -39,6 +39,16 @@
           词汇预览：{{ summaryNextStep.nextTaskPreviewWords }}
         </view>
         <view v-if="summaryNextStep.pendingPushSummary" class="line">{{ summaryNextStep.pendingPushSummary }}</view>
+        <view v-if="summaryNextStep.pendingPushInsight" class="line">{{ summaryNextStep.pendingPushInsight }}</view>
+        <view v-if="summaryNextStep.pendingPushFocusReviewSummary" class="line">
+          {{ summaryNextStep.pendingPushFocusReviewSummary }}
+        </view>
+        <view v-if="summaryNextStep.pendingPushCoachHint" class="line">
+          提示：{{ summaryNextStep.pendingPushCoachHint }}
+        </view>
+        <view v-if="summaryNextStep.pendingPushPreviewWords" class="line">
+          词汇预览：{{ summaryNextStep.pendingPushPreviewWords }}
+        </view>
       </view>
 
       <button type="primary" :loading="startingNextTask" @tap="handleSummaryAction">
@@ -50,11 +60,17 @@
       <view v-if="session?.taskOverview" class="summary-card">
         <view class="summary-title">本轮任务</view>
         <view class="line">{{ session.taskOverview.summary }}</view>
+        <view v-if="session.taskOverview.insightSummary" class="line">
+          {{ session.taskOverview.insightSummary }}
+        </view>
         <view v-if="session.taskOverview.focusSummary" class="line">
           任务要点：{{ session.taskOverview.focusSummary }}
         </view>
         <view v-if="session.taskOverview.coachHint" class="line">
           提示：{{ session.taskOverview.coachHint }}
+        </view>
+        <view v-if="session.taskOverview.previewWords.length" class="line">
+          词汇预览：{{ session.taskOverview.previewWords.join("、") }}
         </view>
       </view>
 
@@ -67,6 +83,7 @@
         <view v-if="currentItem.itemType === 'WORD_MEANING'">
           <view class="question-title">{{ displayWord }}</view>
           <view class="question-subtitle">{{ displayPhonetic }}</view>
+          <view v-if="promptExampleSentence" class="line">例句：{{ promptExampleSentence }}</view>
           <button
             v-for="option in meaningOptions"
             :key="option"
@@ -80,6 +97,7 @@
         <view v-else-if="currentItem.itemType === 'WORD_SPELLING'">
           <view class="question-title">{{ displayMeaning }}</view>
           <view class="question-subtitle">{{ displayPhonetic }}</view>
+          <view v-if="promptExampleSentence" class="line">例句：{{ promptExampleSentence }}</view>
           <view class="hint">提示：{{ spellingHint }}</view>
           <input v-model="spellingInput" class="input" placeholder="请输入单词" />
           <button type="primary" :loading="submitting" @tap="submitSpellingAnswer">提交答案</button>
@@ -89,7 +107,7 @@
           <view class="question-title">{{ displayWord }}</view>
           <view class="question-subtitle">{{ displayPhonetic }}</view>
           <view class="hint">{{ pronunciationInstruction }}</view>
-          <view v-if="pronunciationExample" class="line">例句：{{ pronunciationExample }}</view>
+          <view v-if="promptExampleSentence" class="line">例句：{{ promptExampleSentence }}</view>
           <button
             v-for="option in pronunciationRatingOptions"
             :key="option.value"
@@ -148,6 +166,7 @@ import {
 import {
   buildPronunciationAnswer,
   getLearningItemTypeLabel,
+  readPromptExampleSentence,
   type PronunciationSelfRating
 } from "./item-helpers";
 import { pickFollowupPendingPush } from "./pending-push-match";
@@ -192,7 +211,7 @@ const displayPhonetic = computed(() => {
 });
 const spellingHint = computed(() => String(currentPrompt.value.hint ?? ""));
 const pronunciationInstruction = computed(() => String(currentPrompt.value.instruction ?? "请先朗读当前单词"));
-const pronunciationExample = computed(() => String(currentPrompt.value.exampleSentence ?? "").trim());
+const promptExampleSentence = computed(() => readPromptExampleSentence(currentPrompt.value));
 const isLastItem = computed(() => {
   if (!session.value) {
     return false;
@@ -378,7 +397,8 @@ async function loadSummaryNextStep(needsReviewWordCount: number): Promise<Summar
       currentTaskId: session.value.taskId,
       needsReviewWordCount,
       pendingPushSummary: nextPendingPush?.summary,
-      pendingPushScheduledAt: nextPendingPush?.scheduledAt
+      pendingPushScheduledAt: nextPendingPush?.scheduledAt,
+      pendingPushContent: nextPendingPush?.content
     });
   } catch {
     return fallback;

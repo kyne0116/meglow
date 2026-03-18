@@ -21,3 +21,7 @@ export function buildPronunciationAnswer(
     selfRating
   };
 }
+
+export function readPromptExampleSentence(prompt: Record<string, unknown>): string {
+  return String(prompt.exampleSentence ?? "").trim();
+}

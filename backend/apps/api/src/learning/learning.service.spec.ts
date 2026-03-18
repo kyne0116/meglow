@@ -138,6 +138,12 @@ describe('LearningService pronunciation evaluation', () => {
         dueWords: 2,
         newWords: 1,
         coachHint: 'review due words first, then unlock new ones',
+        priority: 'high',
+        words: [
+          { value: 'apple', kind: 'REVIEW' },
+          { value: 'banana', kind: 'NEW' },
+          { value: 'pear', kind: 'REVIEW' },
+        ],
       },
     );
 
@@ -145,6 +151,8 @@ describe('LearningService pronunciation evaluation', () => {
       summary: 'today english practice',
       focusSummary: 'review 2 due words and add 1 new words',
       coachHint: 'review due words first, then unlock new ones',
+      insightSummary: 'English word task · High priority · Review 2 words, add 1 words',
+      previewWords: ['apple (review)', 'banana (new)', 'pear (review)'],
     });
   });
 });

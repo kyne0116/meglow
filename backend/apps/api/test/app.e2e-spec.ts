@@ -861,15 +861,26 @@ describe('Meglow business flow (e2e)', () => {
       summary: expect.any(String),
       focusSummary: expect.stringContaining('review'),
       coachHint: expect.any(String),
+      insightSummary: expect.stringContaining('English word task'),
+      previewWords: expect.any(Array),
     });
+    expect(sessionDetailResponse.body.taskOverview.previewWords.length).toBeGreaterThan(0);
 
     let firstPronunciationWord = '';
 
     for (const item of sessionDetailResponse.body.items as Array<{
       id: string;
       itemType: 'WORD_MEANING' | 'WORD_SPELLING' | 'WORD_PRONUNCIATION';
-      prompt: { word?: string; meaningZh?: string };
+      prompt: { word?: string; meaningZh?: string; exampleSentence?: string };
     }>) {
+      if (
+        item.itemType === 'WORD_MEANING' ||
+        item.itemType === 'WORD_SPELLING' ||
+        item.itemType === 'WORD_PRONUNCIATION'
+      ) {
+        expect(item.prompt.exampleSentence).toEqual(expect.any(String));
+      }
+
       const answer =
         item.itemType === 'WORD_MEANING'
           ? { selected: wordMap.get(item.prompt.word ?? '') }
