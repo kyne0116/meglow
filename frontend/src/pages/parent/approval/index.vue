@@ -11,6 +11,7 @@
       <view v-if="approvalRecommendation.modeLabel || approvalRecommendation.priorityLabel" class="line">
         {{ [approvalRecommendation.modeLabel, approvalRecommendation.priorityLabel].filter(Boolean).join(" · ") }}
       </view>
+      <view v-if="approvalRecommendation.countSummary" class="line">任务要点：{{ approvalRecommendation.countSummary }}</view>
       <view v-if="approvalRecommendation.targetSummary" class="line">{{ approvalRecommendation.targetSummary }}</view>
       <view class="line">{{ approvalRecommendation.description }}</view>
       <view v-if="approvalRecommendation.expectedOutcome" class="line">
@@ -21,6 +22,9 @@
       </view>
       <view v-if="approvalRecommendation.focusSummary" class="line">{{ approvalRecommendation.focusSummary }}</view>
       <view v-if="approvalRecommendation.coachHint" class="line">学习提示：{{ approvalRecommendation.coachHint }}</view>
+      <view v-if="approvalRecommendation.previewWords.length" class="line">
+        词汇预览：{{ approvalRecommendation.previewWords.join("、") }}
+      </view>
       <button
         size="mini"
         type="primary"
@@ -46,11 +50,17 @@
       <view v-if="getApprovalInsight(item)" class="line">
         {{ [getApprovalInsight(item)?.modeLabel, getApprovalInsight(item)?.priorityLabel].filter(Boolean).join(" · ") }}
       </view>
+      <view v-if="getApprovalInsight(item)?.countSummary" class="line">
+        任务要点：{{ getApprovalInsight(item)?.countSummary }}
+      </view>
       <view v-if="getApprovalInsight(item)?.focusReviewSummary" class="line">
         {{ getApprovalInsight(item)?.focusReviewSummary }}
       </view>
       <view v-if="getApprovalInsight(item)?.coachHint" class="line">
         学习提示：{{ getApprovalInsight(item)?.coachHint }}
+      </view>
+      <view v-if="getApprovalInsight(item)?.previewWords.length" class="line">
+        词汇预览：{{ getApprovalInsight(item)?.previewWords.join("、") }}
       </view>
       <view v-if="getQuickActions(item).length" class="preset-row">
         <button

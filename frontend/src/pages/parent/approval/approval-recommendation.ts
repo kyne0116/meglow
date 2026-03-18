@@ -14,6 +14,8 @@ export interface ApprovalRecommendation {
   description: string;
   modeLabel: string;
   priorityLabel: string;
+  countSummary: string;
+  previewWords: string[];
   targetSummary: string;
   expectedOutcome: string;
   scheduledTimeLabel: string;
@@ -43,6 +45,8 @@ export function buildApprovalRecommendation(pending: PendingPushLike[]): Approva
       description: "这条待审批任务带有重点复习词，建议先检查后再通过或调整。",
       modeLabel: toModeLabel(focusReviewPush.content),
       priorityLabel: toPriorityLabel(focusReviewPush.content.priority),
+      countSummary: toCountSummary(focusReviewPush.content),
+      previewWords: toPreviewWords(focusReviewPush.content.words),
       targetSummary: String(focusReviewPush.summary ?? "").trim(),
       expectedOutcome: String(focusReviewPush.expectedOutcome ?? "").trim(),
       scheduledTimeLabel: formatScheduledTime(focusReviewPush.scheduledAt),
@@ -63,6 +67,8 @@ export function buildApprovalRecommendation(pending: PendingPushLike[]): Approva
       description: "这条任务已标记为高优先级，若无额外调整可直接通过。",
       modeLabel: toModeLabel(highPriorityPush.content),
       priorityLabel: toPriorityLabel(highPriorityPush.content.priority),
+      countSummary: toCountSummary(highPriorityPush.content),
+      previewWords: toPreviewWords(highPriorityPush.content.words),
       targetSummary: String(highPriorityPush.summary ?? "").trim(),
       expectedOutcome: String(highPriorityPush.expectedOutcome ?? "").trim(),
       scheduledTimeLabel: formatScheduledTime(highPriorityPush.scheduledAt),
@@ -89,6 +95,42 @@ function toModeLabel(content: Record<string, unknown>): string {
 
 function toPriorityLabel(value: unknown): string {
   return String(value ?? "").trim().toLowerCase() === "high" ? "高优先级" : "常规";
+}
+
+function toCountSummary(content: Record<string, unknown>): string {
+  const mode = String(content.mode ?? "").trim();
+  if (mode !== "word_learning" && mode !== "word_review") {
+    return "";
+  }
+  if (content.dueWords === undefined && content.newWords === undefined) {
+    return "";
+  }
+
+  const dueWords = toCount(content.dueWords);
+  const newWords = toCount(content.newWords);
+  return `复习 ${dueWords} 个，新增 ${newWords} 个`;
+}
+
+function toCount(value: unknown): number {
+  const count = Number(value);
+  return Number.isFinite(count) && count >= 0 ? count : 0;
+}
+
+function toPreviewWords(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .filter((item): item is Record<string, unknown> => typeof item === "object" && item !== null)
+    .slice(0, 3)
+    .map((item) => {
+      const word = String(item.value ?? "").trim();
+      const kind = String(item.kind ?? "").trim().toUpperCase();
+      const kindLabel = kind === "REVIEW" ? "复习" : "新词";
+      return word ? `${word}（${kindLabel}）` : "";
+    })
+    .filter(Boolean);
 }
 
 function formatScheduledTime(value?: string): string {
