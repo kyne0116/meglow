@@ -12,6 +12,7 @@ test("buildApprovalRecommendation prefers focus review push and carries child an
       scheduledAt: "2026-03-17T10:00:00.000Z",
       content: {
         mode: "word_review",
+        priority: "high",
         coachHint: "start with apple aloud",
         focusReviewWords: [{ word: "apple", incorrectItems: ["WORD_PRONUNCIATION"] }]
       }
@@ -28,6 +29,7 @@ test("buildApprovalRecommendation prefers focus review push and carries child an
   assert.equal(result?.pushId, "push-review");
   assert.equal(result?.childName, "Ming");
   assert.equal(result?.modeLabel, "英语单词任务");
+  assert.equal(result?.priorityLabel, "高优先级");
   assert.equal(result?.actionType, "APPLY_PRESET");
   assert.equal(result?.presetId, "focus_pronunciation");
   assert.equal(result?.targetSummary, "review task");
@@ -56,6 +58,7 @@ test("buildApprovalRecommendation falls back to focus review preset when no pron
   assert.equal(result?.pushId, "push-review");
   assert.equal(result?.childName, "Ming");
   assert.equal(result?.modeLabel, "英语单词任务");
+  assert.equal(result?.priorityLabel, "常规");
   assert.equal(result?.actionType, "APPLY_PRESET");
   assert.equal(result?.presetId, "focus_review");
   assert.equal(result?.expectedOutcome, "review spelling");
@@ -82,6 +85,7 @@ test("buildApprovalRecommendation falls back to high priority approve and keeps 
   assert.equal(result?.pushId, "push-high");
   assert.equal(result?.childName, "Ming");
   assert.equal(result?.modeLabel, "英语单词任务");
+  assert.equal(result?.priorityLabel, "高优先级");
   assert.equal(result?.actionType, "APPROVE");
   assert.equal(result?.expectedOutcome, "finish today");
   assert.equal(result?.coachHint, "complete it first");

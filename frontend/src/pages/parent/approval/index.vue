@@ -8,7 +8,9 @@
     <view v-else-if="approvalRecommendation" class="card recommend-card">
       <view class="card-title">{{ approvalRecommendation.title }}</view>
       <view v-if="approvalRecommendation.childName" class="line">孩子：{{ approvalRecommendation.childName }}</view>
-      <view v-if="approvalRecommendation.modeLabel" class="line">类型：{{ approvalRecommendation.modeLabel }}</view>
+      <view v-if="approvalRecommendation.modeLabel || approvalRecommendation.priorityLabel" class="line">
+        {{ [approvalRecommendation.modeLabel, approvalRecommendation.priorityLabel].filter(Boolean).join(" · ") }}
+      </view>
       <view v-if="approvalRecommendation.targetSummary" class="line">{{ approvalRecommendation.targetSummary }}</view>
       <view class="line">{{ approvalRecommendation.description }}</view>
       <view v-if="approvalRecommendation.expectedOutcome" class="line">
@@ -42,7 +44,7 @@
       <view class="line">计划时间：{{ formatTime(item.scheduledAt) }}</view>
 
       <view v-if="getApprovalInsight(item)" class="line">
-        类型：{{ getApprovalInsight(item)?.modeLabel }}
+        {{ [getApprovalInsight(item)?.modeLabel, getApprovalInsight(item)?.priorityLabel].filter(Boolean).join(" · ") }}
       </view>
       <view v-if="getApprovalInsight(item)?.focusReviewSummary" class="line">
         {{ getApprovalInsight(item)?.focusReviewSummary }}

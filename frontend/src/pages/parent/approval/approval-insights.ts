@@ -1,5 +1,6 @@
 export interface ApprovalInsight {
   modeLabel: string;
+  priorityLabel: string;
   coachHint: string;
   focusReviewSummary: string;
 }
@@ -10,6 +11,7 @@ export function buildApprovalInsight(content: Record<string, unknown>): Approval
   if (mode === "word_learning" || mode === "word_review") {
     return {
       modeLabel: "英语单词任务",
+      priorityLabel: toPriorityLabel(content.priority),
       coachHint: String(content.coachHint ?? "").trim(),
       focusReviewSummary: buildFocusReviewSummary(content.focusReviewWords)
     };
@@ -18,12 +20,17 @@ export function buildApprovalInsight(content: Record<string, unknown>): Approval
   if (mode === "textbook_content_review") {
     return {
       modeLabel: "教材内容任务",
+      priorityLabel: toPriorityLabel(content.priority),
       coachHint: String(content.coachHint ?? "").trim(),
       focusReviewSummary: ""
     };
   }
 
   return null;
+}
+
+function toPriorityLabel(value: unknown): string {
+  return String(value ?? "").trim().toLowerCase() === "high" ? "高优先级" : "常规";
 }
 
 function buildFocusReviewSummary(value: unknown): string {

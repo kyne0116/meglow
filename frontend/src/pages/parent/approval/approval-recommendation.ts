@@ -13,6 +13,7 @@ export interface ApprovalRecommendation {
   title: string;
   description: string;
   modeLabel: string;
+  priorityLabel: string;
   targetSummary: string;
   expectedOutcome: string;
   scheduledTimeLabel: string;
@@ -41,6 +42,7 @@ export function buildApprovalRecommendation(pending: PendingPushLike[]): Approva
       title: "推荐处理：先确认重点复习任务",
       description: "这条待审批任务带有重点复习词，建议先检查后再通过或调整。",
       modeLabel: toModeLabel(focusReviewPush.content),
+      priorityLabel: toPriorityLabel(focusReviewPush.content.priority),
       targetSummary: String(focusReviewPush.summary ?? "").trim(),
       expectedOutcome: String(focusReviewPush.expectedOutcome ?? "").trim(),
       scheduledTimeLabel: formatScheduledTime(focusReviewPush.scheduledAt),
@@ -60,6 +62,7 @@ export function buildApprovalRecommendation(pending: PendingPushLike[]): Approva
       title: "推荐处理：优先通过高优先级任务",
       description: "这条任务已标记为高优先级，若无额外调整可直接通过。",
       modeLabel: toModeLabel(highPriorityPush.content),
+      priorityLabel: toPriorityLabel(highPriorityPush.content.priority),
       targetSummary: String(highPriorityPush.summary ?? "").trim(),
       expectedOutcome: String(highPriorityPush.expectedOutcome ?? "").trim(),
       scheduledTimeLabel: formatScheduledTime(highPriorityPush.scheduledAt),
@@ -82,6 +85,10 @@ function toModeLabel(content: Record<string, unknown>): string {
     return "教材内容任务";
   }
   return "";
+}
+
+function toPriorityLabel(value: unknown): string {
+  return String(value ?? "").trim().toLowerCase() === "high" ? "高优先级" : "常规";
 }
 
 function formatScheduledTime(value?: string): string {
