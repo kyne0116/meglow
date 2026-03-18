@@ -2,10 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { buildApprovalRecommendation } from "./approval-recommendation.ts";
 
-test("buildApprovalRecommendation prefers focus review push and carries outcome and coach hint", () => {
+test("buildApprovalRecommendation prefers focus review push and carries child and mode labels", () => {
   const result = buildApprovalRecommendation([
     {
       id: "push-review",
+      childName: "Ming",
       summary: "review task",
       expectedOutcome: "review the weak words",
       scheduledAt: "2026-03-17T10:00:00.000Z",
@@ -17,6 +18,7 @@ test("buildApprovalRecommendation prefers focus review push and carries outcome 
     },
     {
       id: "push-normal",
+      childName: "Ming",
       summary: "normal task",
       expectedOutcome: "finish normal learning",
       content: {}
@@ -24,6 +26,8 @@ test("buildApprovalRecommendation prefers focus review push and carries outcome 
   ]);
 
   assert.equal(result?.pushId, "push-review");
+  assert.equal(result?.childName, "Ming");
+  assert.equal(result?.modeLabel, "英语单词任务");
   assert.equal(result?.actionType, "APPLY_PRESET");
   assert.equal(result?.presetId, "focus_pronunciation");
   assert.equal(result?.targetSummary, "review task");
@@ -37,6 +41,7 @@ test("buildApprovalRecommendation falls back to focus review preset when no pron
   const result = buildApprovalRecommendation([
     {
       id: "push-review",
+      childName: "Ming",
       summary: "review task",
       expectedOutcome: "review spelling",
       scheduledAt: "2026-03-17T11:30:00.000Z",
@@ -49,6 +54,8 @@ test("buildApprovalRecommendation falls back to focus review preset when no pron
   ]);
 
   assert.equal(result?.pushId, "push-review");
+  assert.equal(result?.childName, "Ming");
+  assert.equal(result?.modeLabel, "英语单词任务");
   assert.equal(result?.actionType, "APPLY_PRESET");
   assert.equal(result?.presetId, "focus_review");
   assert.equal(result?.expectedOutcome, "review spelling");
@@ -56,14 +63,16 @@ test("buildApprovalRecommendation falls back to focus review preset when no pron
   assert.equal(result?.scheduledTimeLabel, "2026-03-17 19:30");
 });
 
-test("buildApprovalRecommendation falls back to high priority approve and keeps expected outcome", () => {
+test("buildApprovalRecommendation falls back to high priority approve and keeps child and mode labels", () => {
   const result = buildApprovalRecommendation([
     {
       id: "push-high",
+      childName: "Ming",
       summary: "high priority task",
       expectedOutcome: "finish today",
       scheduledAt: "2026-03-17T08:15:00.000Z",
       content: {
+        mode: "word_learning",
         priority: "high",
         coachHint: "complete it first"
       }
@@ -71,6 +80,8 @@ test("buildApprovalRecommendation falls back to high priority approve and keeps 
   ]);
 
   assert.equal(result?.pushId, "push-high");
+  assert.equal(result?.childName, "Ming");
+  assert.equal(result?.modeLabel, "英语单词任务");
   assert.equal(result?.actionType, "APPROVE");
   assert.equal(result?.expectedOutcome, "finish today");
   assert.equal(result?.coachHint, "complete it first");

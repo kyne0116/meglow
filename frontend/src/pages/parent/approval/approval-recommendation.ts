@@ -1,5 +1,6 @@
 interface PendingPushLike {
   id: string;
+  childName?: string;
   summary?: string;
   expectedOutcome?: string;
   scheduledAt?: string;
@@ -8,8 +9,10 @@ interface PendingPushLike {
 
 export interface ApprovalRecommendation {
   pushId: string;
+  childName: string;
   title: string;
   description: string;
+  modeLabel: string;
   targetSummary: string;
   expectedOutcome: string;
   scheduledTimeLabel: string;
@@ -34,8 +37,10 @@ export function buildApprovalRecommendation(pending: PendingPushLike[]): Approva
     });
     return {
       pushId: focusReviewPush.id,
+      childName: String(focusReviewPush.childName ?? "").trim(),
       title: "推荐处理：先确认重点复习任务",
       description: "这条待审批任务带有重点复习词，建议先检查后再通过或调整。",
+      modeLabel: toModeLabel(focusReviewPush.content),
       targetSummary: String(focusReviewPush.summary ?? "").trim(),
       expectedOutcome: String(focusReviewPush.expectedOutcome ?? "").trim(),
       scheduledTimeLabel: formatScheduledTime(focusReviewPush.scheduledAt),
@@ -51,8 +56,10 @@ export function buildApprovalRecommendation(pending: PendingPushLike[]): Approva
   if (highPriorityPush) {
     return {
       pushId: highPriorityPush.id,
+      childName: String(highPriorityPush.childName ?? "").trim(),
       title: "推荐处理：优先通过高优先级任务",
       description: "这条任务已标记为高优先级，若无额外调整可直接通过。",
+      modeLabel: toModeLabel(highPriorityPush.content),
       targetSummary: String(highPriorityPush.summary ?? "").trim(),
       expectedOutcome: String(highPriorityPush.expectedOutcome ?? "").trim(),
       scheduledTimeLabel: formatScheduledTime(highPriorityPush.scheduledAt),
@@ -64,6 +71,17 @@ export function buildApprovalRecommendation(pending: PendingPushLike[]): Approva
   }
 
   return null;
+}
+
+function toModeLabel(content: Record<string, unknown>): string {
+  const mode = String(content.mode ?? "").trim();
+  if (mode === "word_learning" || mode === "word_review") {
+    return "英语单词任务";
+  }
+  if (mode === "textbook_content_review") {
+    return "教材内容任务";
+  }
+  return "";
 }
 
 function formatScheduledTime(value?: string): string {
