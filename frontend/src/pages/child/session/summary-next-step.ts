@@ -21,6 +21,7 @@ export interface SummaryNextStep {
   nextTaskSummary: string;
   nextTaskInsight: string;
   nextTaskCoachHint: string;
+  nextTaskPreviewWords: string;
   pendingPushSummary: string;
   actionLabel: string;
   actionType: "START_NEXT_TASK" | "DELIVER_AND_START_NEXT_TASK" | "OPEN_TASK_PANEL";
@@ -39,6 +40,7 @@ export function buildSummaryNextStep(tasks: TaskLike[], options: SummaryNextStep
       nextTaskSummary: buildNextTaskSummary(nextLearnableTask.summary, nextLearnableTask.scheduledAt),
       nextTaskInsight: buildNextTaskInsight(nextLearnableTask.content),
       nextTaskCoachHint: String(nextLearnableTask.content.coachHint ?? "").trim(),
+      nextTaskPreviewWords: buildNextTaskPreviewWords(nextLearnableTask.content.words),
       pendingPushSummary: "",
       actionLabel: "继续下一条任务",
       actionType: "START_NEXT_TASK",
@@ -55,6 +57,7 @@ export function buildSummaryNextStep(tasks: TaskLike[], options: SummaryNextStep
       nextTaskSummary: buildNextTaskSummary(nextDeliverableTask.summary, nextDeliverableTask.scheduledAt),
       nextTaskInsight: buildNextTaskInsight(nextDeliverableTask.content),
       nextTaskCoachHint: String(nextDeliverableTask.content.coachHint ?? "").trim(),
+      nextTaskPreviewWords: buildNextTaskPreviewWords(nextDeliverableTask.content.words),
       pendingPushSummary: "",
       actionLabel: "投递并继续下一条任务",
       actionType: "DELIVER_AND_START_NEXT_TASK",
@@ -69,6 +72,7 @@ export function buildSummaryNextStep(tasks: TaskLike[], options: SummaryNextStep
       nextTaskSummary: "",
       nextTaskInsight: "",
       nextTaskCoachHint: "",
+      nextTaskPreviewWords: "",
       pendingPushSummary: buildPendingPushSummary(options.pendingPushSummary, options.pendingPushScheduledAt),
       actionLabel: "返回任务面板查看进度",
       actionType: "OPEN_TASK_PANEL"
@@ -81,6 +85,7 @@ export function buildSummaryNextStep(tasks: TaskLike[], options: SummaryNextStep
     nextTaskSummary: "",
     nextTaskInsight: "",
     nextTaskCoachHint: "",
+    nextTaskPreviewWords: "",
     pendingPushSummary: "",
     actionLabel: "返回任务面板",
     actionType: "OPEN_TASK_PANEL"
@@ -114,6 +119,24 @@ function buildPendingPushSummary(summary?: string, scheduledAt?: string): string
   }
 
   return `待审批推送：${summary}，计划时间：${formattedTime}`;
+}
+
+function buildNextTaskPreviewWords(value: unknown): string {
+  if (!Array.isArray(value)) {
+    return "";
+  }
+
+  return value
+    .filter((item): item is Record<string, unknown> => typeof item === "object" && item !== null)
+    .slice(0, 3)
+    .map((item) => {
+      const word = String(item.value ?? "").trim();
+      const kind = String(item.kind ?? "").trim().toUpperCase();
+      const kindLabel = kind === "REVIEW" ? "复习" : "新词";
+      return word ? `${word}（${kindLabel}）` : "";
+    })
+    .filter(Boolean)
+    .join("、");
 }
 
 function toModeLabel(content: Record<string, unknown>): string {

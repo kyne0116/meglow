@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { buildSummaryNextStep } from "./summary-next-step.ts";
 
-test("buildSummaryNextStep prefers remaining delivered tasks and includes next task schedule and insight", () => {
+test("buildSummaryNextStep prefers remaining delivered tasks and includes next task context", () => {
   const result = buildSummaryNextStep(
     [
       {
@@ -21,7 +21,11 @@ test("buildSummaryNextStep prefers remaining delivered tasks and includes next t
           mode: "word_review",
           priority: "high",
           dueWords: 2,
-          newWords: 1
+          newWords: 1,
+          words: [
+            { value: "apple", kind: "REVIEW" },
+            { value: "banana", kind: "NEW" }
+          ]
         }
       },
       {
@@ -42,9 +46,10 @@ test("buildSummaryNextStep prefers remaining delivered tasks and includes next t
   assert.equal(result.nextTaskSummary.includes("2026-03-17 17:30"), true);
   assert.equal(result.nextTaskInsight, "英语单词任务 · 高优先级 · 复习 2 个，新增 1 个");
   assert.equal(result.nextTaskCoachHint, "");
+  assert.equal(result.nextTaskPreviewWords, "apple（复习）、banana（新词）");
 });
 
-test("buildSummaryNextStep falls back to deliverable tasks and includes next task insight", () => {
+test("buildSummaryNextStep falls back to deliverable tasks and includes full next task context", () => {
   const result = buildSummaryNextStep(
     [
       {
@@ -63,7 +68,12 @@ test("buildSummaryNextStep falls back to deliverable tasks and includes next tas
           mode: "word_learning",
           dueWords: 3,
           newWords: 2,
-          coachHint: "finish review words before new words"
+          coachHint: "finish review words before new words",
+          words: [
+            { value: "orange", kind: "NEW" },
+            { value: "grape", kind: "REVIEW" },
+            { value: "pear", kind: "NEW" }
+          ]
         }
       },
       {
@@ -84,6 +94,7 @@ test("buildSummaryNextStep falls back to deliverable tasks and includes next tas
   assert.equal(result.nextTaskSummary.includes("2026-03-17 18:30"), true);
   assert.equal(result.nextTaskInsight, "英语单词任务 · 常规 · 复习 3 个，新增 2 个");
   assert.equal(result.nextTaskCoachHint, "finish review words before new words");
+  assert.equal(result.nextTaskPreviewWords, "orange（新词）、grape（复习）、pear（新词）");
 });
 
 test("buildSummaryNextStep includes matched pending push time when waiting for review approval", () => {
@@ -110,6 +121,7 @@ test("buildSummaryNextStep includes matched pending push time when waiting for r
   assert.equal(result.nextTaskSummary, "");
   assert.equal(result.nextTaskInsight, "");
   assert.equal(result.nextTaskCoachHint, "");
+  assert.equal(result.nextTaskPreviewWords, "");
   assert.equal(result.pendingPushSummary.includes("apple pronunciation review"), true);
   assert.equal(result.pendingPushSummary.endsWith("2026-03-17 18:30"), true);
 });
@@ -136,5 +148,6 @@ test("buildSummaryNextStep keeps a generic fallback when nothing else is queued"
   assert.equal(result.nextTaskSummary, "");
   assert.equal(result.nextTaskInsight, "");
   assert.equal(result.nextTaskCoachHint, "");
+  assert.equal(result.nextTaskPreviewWords, "");
   assert.equal(result.pendingPushSummary, "");
 });

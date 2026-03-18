@@ -35,6 +35,9 @@
         <view v-if="summaryNextStep.nextTaskCoachHint" class="line">
           提示：{{ summaryNextStep.nextTaskCoachHint }}
         </view>
+        <view v-if="summaryNextStep.nextTaskPreviewWords" class="line">
+          词汇预览：{{ summaryNextStep.nextTaskPreviewWords }}
+        </view>
         <view v-if="summaryNextStep.pendingPushSummary" class="line">{{ summaryNextStep.pendingPushSummary }}</view>
       </view>
 
